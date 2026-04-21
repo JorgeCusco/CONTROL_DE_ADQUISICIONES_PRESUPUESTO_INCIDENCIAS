@@ -1,0 +1,35 @@
+# Configuración MCP — PostgreSQL Local
+# Proyecto: 7_Insumos_rado — Presupuestos OFI
+# Protocolo: Model Context Protocol (MCP)
+#
+# Este archivo configura el servidor MCP que permite a los agentes
+# de Antigravity leer el esquema de PostgreSQL en tiempo real,
+# ejecutar consultas SQL y evitar alucinaciones sobre la estructura
+# de las tablas de partidas y metrados.
+
+{
+  "mcpServers": {
+    "postgres-presupuestos": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-postgres",
+        "postgresql://postgres:TU_PASSWORD@localhost:5432/presupuestos_ofi"
+      ],
+      "description": "Servidor MCP para PostgreSQL local del proyecto Presupuestos OFI",
+      "capabilities": ["query", "schema", "tables"],
+      "tablas_de_interes": [
+        "catalogo_partidas",
+        "insumos",
+        "adquisiciones",
+        "metrados"
+      ],
+      "notas": [
+        "Reemplaza TU_PASSWORD con la contraseña real de PostgreSQL",
+        "El puerto 5432 es el predeterminado de PostgreSQL",
+        "Cambia 'presupuestos_ofi' por el nombre real de tu base de datos",
+        "Para Supabase local usa: postgresql://postgres:PASSWORD@127.0.0.1:54322/postgres"
+      ]
+    }
+  }
+}

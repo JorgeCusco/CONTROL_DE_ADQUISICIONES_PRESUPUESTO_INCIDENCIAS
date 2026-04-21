@@ -1,0 +1,48 @@
+{
+  "proyecto": "7_Insumos_rado — Presupuestos OFI",
+  "version": "1.0.0",
+  "descripcion": "Skills de automatización para el equipo de 6 personas",
+  "skills": [
+    {
+      "nombre": "optimizacion_metrados",
+      "ruta": ".agents/skills/optimizacion_metrados",
+      "activadores": ["cuadrar los metrados", "ajustar modificados", "distribuir proporcionalmente", "la suma no cierra"],
+      "script_principal": "scripts/calcular_distribucion.py",
+      "dependencias": ["scipy", "numpy"]
+    },
+    {
+      "nombre": "validador_postgresql",
+      "ruta": ".agents/skills/validador_postgresql",
+      "activadores": ["valida este SQL", "revisa el esquema", "valida antes de ejecutar", "verifica las tablas"],
+      "script_principal": "scripts/validar_esquema.py",
+      "dependencias": []
+    },
+    {
+      "nombre": "validador-streamlit-colaborativo",
+      "ruta": ".agents/skills/validador-streamlit-colaborativo",
+      "activadores": ["st.data_editor", "tabla interactiva", "agregar una tabla", "guardar en base de datos"],
+      "activacion": "automatica",
+      "script_principal": null,
+      "dependencias": ["streamlit"]
+    },
+    {
+      "nombre": "exportador-cuadro-osce",
+      "ruta": ".agents/skills/exportador-cuadro-osce",
+      "activadores": ["exporta el cuadro OSCE", "genera el comparativo en Excel", "cuadro comparativo para sustentar"],
+      "script_principal": "scripts/exportar_cuadro_osce.py",
+      "dependencias": ["pandas", "xlsxwriter"]
+    },
+    {
+      "nombre": "exportador_reportes",
+      "ruta": ".agents/skills/exportador_reportes",
+      "activadores": ["exporta el reporte", "descarga el Excel", "exportar con formato"],
+      "script_principal": "scripts/exportar_excel.py",
+      "dependencias": ["pandas", "xlsxwriter"]
+    }
+  ],
+  "mcp": {
+    "config": ".agents/mcp_config.json",
+    "servidor": "postgres-presupuestos",
+    "puerto": 5432
+  }
+}
