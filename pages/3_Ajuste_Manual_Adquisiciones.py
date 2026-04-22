@@ -184,25 +184,75 @@ if insumo_seleccionado:
             opciones = df_disponibles['codigo'] + " - " + df_disponibles['descripcion']
             nueva_partida = st.selectbox("Seleccione la Partida a la que desea agregar el insumo:", opciones)
             
-            if st.button("Añadir a esta Partida"):
+            if st.button("Registrar Insumo en esta Partida"):
                 codigo_nueva = nueva_partida.split(" - ")[0]
+                
+                # Obtener datos base del insumo actual
+                codigo_insumo_existente = str(df_impacto['codigo_insumo'].iloc[0]) if not df_impacto.empty and pd.notna(df_impacto['codigo_insumo'].iloc[0]) else ""
+                item_1_existente = str(df_impacto['item_1'].iloc[0]) if not df_impacto.empty and pd.notna(df_impacto['item_1'].iloc[0]) else ""
                 
                 # Insertar nuevo registro en insumos
                 insert_query = text("""
-                    INSERT INTO insumos (codigo_partida, descripcion, unidad, incidencia, cantidad_adquirida, cantidad_modificada)
-                    VALUES (:cod, :desc, :und, 0.0, :adq, 0.0)
+                    INSERT INTO insumos (
+                        codigo_partida, item_1, codigo_insumo, descripcion, unidad, 
+                        incidencia_original, parcial_original, 
+                        incidencia, cantidad_modificada, cantidad_adquirida
+                    )
+                    VALUES (:cod, :itm, :cins, :desc, :und, 0.0, 0.0, 0.0, 0.0, :adq)
                 """)
                 try:
                     engine = get_engine()
                     with engine.begin() as conn:
                         conn.execute(insert_query, {
                             "cod": codigo_nueva,
+                            "itm": item_1_existente,
+                            "cins": codigo_insumo_existente,
                             "desc": insumo_seleccionado,
                             "und": unidad_insumo,
                             "adq": nuevo_adquirido
                         })
-                    st.success(f"Insumo agregado exitosamente a la partida {codigo_nueva}.")
+                    st.success(f"Insumo registrado exitosamente en la partida {codigo_nueva}.")
                     load_insumos_unicos.clear()
                     st.rerun()
                 except Exception as e:
-                    st.error(f"Error al agregar insumo: {e}")
+                    st.error(f"Error al registrar insumo: {e}")
+
+    st.markdown("---")
+    st.write("### 📥 5. Exportar Reporte")
+    st.info("Descarga el cuadro comparativo exactamente como se ve arriba (APU 1 vs APU 2), perfectamente alineado para tu informe.")
+    
+    # Generar Excel en memoria
+    import io
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        df_final.to_excel(writer, sheet_name='APU_Comparativo', index=False)
+        workbook = writer.book
+        worksheet = writer.sheets['APU_Comparativo']
+        
+        # Formato básico
+        header_format = workbook.add_format({
+            'bold': True,
+            'text_wrap': True,
+            'valign': 'top',
+            'fg_color': '#1F3864',
+            'font_color': 'white',
+            'border': 1
+        })
+        
+        # Aplicar anchos y formato de cabecera
+        for col_num, value in enumerate(df_final.columns.values):
+            worksheet.write(0, col_num, value, header_format)
+            worksheet.set_column(col_num, col_num, 15)
+            
+        worksheet.set_column('C:C', 40) # Descripción más ancha
+        
+    excel_data = output.getvalue()
+    
+    st.download_button(
+        label="📥 Descargar Cuadro Comparativo en Excel (.xlsx)",
+        data=excel_data,
+        file_name=f"APU_Comparativo_{insumo_seleccionado.replace(' ', '_')}.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        type="primary"
+    )
+
