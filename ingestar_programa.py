@@ -65,7 +65,7 @@ def ingestar_datos():
                 "cantidad_modificada": 0.0 # Inicializamos en 0
             })
             
-    print("✅ Ingesta de datos completada con éxito.")
+    print("Ingesta de datos completada con éxito.")
 
 if __name__ == "__main__":
     ingestar_datos()

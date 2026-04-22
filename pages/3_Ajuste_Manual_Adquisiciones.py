@@ -53,11 +53,11 @@ if insumo_seleccionado:
             help="El total adquirido que debe cuadrar con la suma de las cantidades modificadas."
         )
     
-    st.write("### 3. Distribución por Partidas (Modifique las cantidades)")
-    st.info("Solo se muestran las columnas necesarias. Edite la columna **CANTIDAD MODIFICADA** para cada partida.")
+    st.write("### 3. Edición de Incidencias")
+    st.info("Edite la columna **INCIDENCIA (Editable)**. El sistema calculará automáticamente la Cantidad Modificada (Parcial) abajo.")
     
     # Preparamos el dataframe para el editor
-    df_editor = df_impacto[['id', 'codigo_partida', 'partida_desc', 'metrado_fijo', 'incidencia', 'cantidad_modificada']].copy()
+    df_editor = df_impacto[['id', 'codigo_partida', 'partida_desc', 'metrado_fijo', 'incidencia']].copy()
     
     # Configuración de columnas
     column_config = {
@@ -65,8 +65,7 @@ if insumo_seleccionado:
         "codigo_partida": st.column_config.TextColumn("Código Partida", disabled=True),
         "partida_desc": st.column_config.TextColumn("Descripción Partida", disabled=True),
         "metrado_fijo": st.column_config.NumberColumn("Metrado Fijo", disabled=True, format="%.4f"),
-        "incidencia": st.column_config.NumberColumn("Incidencia Actual", disabled=True, format="%.6f"),
-        "cantidad_modificada": st.column_config.NumberColumn("CANTIDAD MODIFICADA", format="%.4f", required=True)
+        "incidencia": st.column_config.NumberColumn("INCIDENCIA (Editable)", format="%.6f", required=True)
     }
     
     edited_df = st.data_editor(
@@ -77,14 +76,46 @@ if insumo_seleccionado:
         key=f"editor_manual_{insumo_seleccionado}"
     )
     
-    # Calcular suma y mostrar estado
-    suma_modificada = edited_df['cantidad_modificada'].sum()
+    # Calcular cantidad modificada (Parcial) = Incidencia * Metrado Fijo
+    edited_df['cantidad_modificada_calc'] = edited_df['incidencia'] * edited_df['metrado_fijo']
+    
+    suma_metrado = edited_df['metrado_fijo'].sum()
+    suma_modificada = edited_df['cantidad_modificada_calc'].sum()
     diferencia = nuevo_adquirido - suma_modificada
+    
+    st.write("### 4. Resultados Parciales y Totales")
+    
+    # Crear DataFrame de visualización con los parciales y la fila de sumas
+    df_display = edited_df[['codigo_partida', 'partida_desc', 'metrado_fijo', 'incidencia', 'cantidad_modificada_calc']].copy()
+    df_display.columns = ['Código Partida', 'Descripción Partida', 'Metrado Fijo', 'Incidencia', 'CANTIDAD MODIFICADA (Parcial)']
+    
+    # Fila de totales
+    df_totales = pd.DataFrame([{
+        'Código Partida': '🟢 TOTALES',
+        'Descripción Partida': '',
+        'Metrado Fijo': suma_metrado,
+        'Incidencia': None, # No sumar incidencia
+        'CANTIDAD MODIFICADA (Parcial)': suma_modificada
+    }])
+    
+    df_final = pd.concat([df_display, df_totales], ignore_index=True)
+    
+    # Mostrar tabla final
+    st.dataframe(
+        df_final, 
+        hide_index=True, 
+        use_container_width=True,
+        column_config={
+            "Metrado Fijo": st.column_config.NumberColumn(format="%.4f"),
+            "Incidencia": st.column_config.NumberColumn(format="%.6f"),
+            "CANTIDAD MODIFICADA (Parcial)": st.column_config.NumberColumn(format="%.4f")
+        }
+    )
     
     st.write("---")
     c1, c2, c3 = st.columns(3)
-    c1.metric("Total Adquirido", f"{nuevo_adquirido:.4f} {unidad_insumo}")
-    c2.metric("Suma Modificada", f"{suma_modificada:.4f} {unidad_insumo}")
+    c1.metric("Total Adquirido (Dato)", f"{nuevo_adquirido:.4f} {unidad_insumo}")
+    c2.metric("Suma Modificada (Calculada)", f"{suma_modificada:.4f} {unidad_insumo}")
     
     if abs(diferencia) < 0.0001:
         c3.metric("Diferencia", f"{diferencia:.4f}", "¡Cuadre Exacto!")
@@ -98,11 +129,8 @@ if insumo_seleccionado:
             with engine.begin() as conn:
                 for _, row in edited_df.iterrows():
                     insumo_id = int(row['id'])
-                    nueva_modificada = float(row['cantidad_modificada'])
-                    metrado_fijo = float(row['metrado_fijo'])
-                    
-                    # Calcular nueva incidencia
-                    nueva_incidencia = nueva_modificada / metrado_fijo if metrado_fijo > 0 else 0.0
+                    nueva_incidencia = float(row['incidencia'])
+                    nueva_modificada = float(row['cantidad_modificada_calc'])
                     
                     update_query = text("""
                         UPDATE insumos 

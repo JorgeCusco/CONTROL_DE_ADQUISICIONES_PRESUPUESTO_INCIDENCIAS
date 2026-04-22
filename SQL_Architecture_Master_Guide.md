@@ -30,3 +30,4 @@ Almacena los insumos relacionados a cada partida para el control y cuadre.
 - `cantidad_adquirida` (NUMERIC 15,4): Valor objetivo a cuadrar.
 - `cantidad_modificada` (NUMERIC 15,4): Cantidad calculada por el motor matemático.
 | 2026-04-21 | Inicialización del documento. Base de datos vacía. | N/A |
+| 2026-04-21 | Creación de base de datos y esquema inicial. Ingesta de datos desde Excel completada. | Jorge Cusco |
