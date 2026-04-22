@@ -13,11 +13,24 @@ CREATE TABLE IF NOT EXISTS partidas (
 CREATE TABLE IF NOT EXISTS insumos (
     id SERIAL PRIMARY KEY,
     codigo_partida VARCHAR(50) NOT NULL,
+    
+    -- Datos de Identificación del Insumo
+    item_1 VARCHAR(20),
+    codigo_insumo VARCHAR(50),
     descripcion TEXT NOT NULL,
     unidad VARCHAR(20) NOT NULL,
+    
+    -- APU 1 (Original del Expediente)
+    incidencia_original NUMERIC(15, 4) NOT NULL DEFAULT 0.0000,
+    parcial_original NUMERIC(15, 4) NOT NULL DEFAULT 0.0000,
+    
+    -- APU 2 (Modificado / Cuadre Real)
     incidencia NUMERIC(15, 4) NOT NULL DEFAULT 0.0000,
-    cantidad_adquirida NUMERIC(15, 4) NOT NULL DEFAULT 0.0000,
     cantidad_modificada NUMERIC(15, 4) NOT NULL DEFAULT 0.0000,
+    
+    -- Control Logístico Global
+    cantidad_adquirida NUMERIC(15, 4) NOT NULL DEFAULT 0.0000,
+    
     CONSTRAINT fk_partida FOREIGN KEY (codigo_partida) REFERENCES partidas(codigo) ON DELETE CASCADE
 );
 

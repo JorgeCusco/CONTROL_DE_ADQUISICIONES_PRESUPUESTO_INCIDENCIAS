@@ -27,8 +27,9 @@ insumo_seleccionado = st.selectbox(
 if insumo_seleccionado:
     # 2. Cargar datos del insumo
     query = """
-        SELECT i.id, i.codigo_partida, p.descripcion as partida_desc, i.unidad, 
-               p.metrado_fijo, i.incidencia, i.cantidad_adquirida, i.cantidad_modificada
+        SELECT i.id, p.codigo as codigo_partida, i.item_1, i.codigo_insumo, p.descripcion as partida_desc, i.unidad, 
+               i.incidencia_original as cantidad_1, p.metrado_fijo, i.parcial_original as parcial_1,
+               i.incidencia as cantidad_2, i.cantidad_modificada, i.cantidad_adquirida
         FROM insumos i
         JOIN partidas p ON i.codigo_partida = p.codigo
         WHERE i.descripcion = %(desc)s
@@ -46,26 +47,30 @@ if insumo_seleccionado:
     col1, col2 = st.columns([1, 2])
     with col1:
         nuevo_adquirido = st.number_input(
-            "Cantidad Total Adquirida (Para este insumo):",
+            "Cantidad Total Adquirida (Dato):",
             value=float(adquirido_actual),
             min_value=0.0,
             format="%.4f",
-            help="El total adquirido que debe cuadrar con la suma de las cantidades modificadas."
+            help="El total adquirido que debe cuadrar con la suma de las cantidades modificadas (APU 2)."
         )
     
-    st.write("### 3. Edición de Incidencias")
-    st.info("Edite la columna **INCIDENCIA (Editable)**. El sistema calculará automáticamente la Cantidad Modificada (Parcial) abajo.")
+    st.write("### 3. Edición de Incidencias (APU 2)")
+    st.info("Edite la columna **CANTIDAD 2 (Incidencia)**. El sistema calculará automáticamente el Parcial 2 abajo.")
     
     # Preparamos el dataframe para el editor
-    df_editor = df_impacto[['id', 'codigo_partida', 'partida_desc', 'metrado_fijo', 'incidencia']].copy()
+    df_editor = df_impacto[['id', 'item_1', 'codigo_insumo', 'partida_desc', 'unidad', 'cantidad_1', 'metrado_fijo', 'parcial_1', 'cantidad_2']].copy()
     
     # Configuración de columnas
     column_config = {
         "id": None, # Ocultar
-        "codigo_partida": st.column_config.TextColumn("Código Partida", disabled=True),
-        "partida_desc": st.column_config.TextColumn("Descripción Partida", disabled=True),
+        "item_1": st.column_config.TextColumn("Item 1", disabled=True),
+        "codigo_insumo": st.column_config.TextColumn("Código 1", disabled=True),
+        "partida_desc": st.column_config.TextColumn("Descripción 1", disabled=True),
+        "unidad": st.column_config.TextColumn("Unid. 1", disabled=True),
+        "cantidad_1": st.column_config.NumberColumn("Cantidad 1 (Incid.)", disabled=True, format="%.6f"),
         "metrado_fijo": st.column_config.NumberColumn("Metrado Fijo", disabled=True, format="%.4f"),
-        "incidencia": st.column_config.NumberColumn("INCIDENCIA (Editable)", format="%.6f", required=True)
+        "parcial_1": st.column_config.NumberColumn("Parcial 1", disabled=True, format="%.4f"),
+        "cantidad_2": st.column_config.NumberColumn("CANTIDAD 2 (Editable)", format="%.6f", required=True)
     }
     
     edited_df = st.data_editor(
@@ -76,26 +81,34 @@ if insumo_seleccionado:
         key=f"editor_manual_{insumo_seleccionado}"
     )
     
-    # Calcular cantidad modificada (Parcial) = Incidencia * Metrado Fijo
-    edited_df['cantidad_modificada_calc'] = edited_df['incidencia'] * edited_df['metrado_fijo']
+    # Calcular cantidad modificada (Parcial 2) = Cantidad 2 * Metrado Fijo
+    edited_df['parcial_2'] = edited_df['cantidad_2'] * edited_df['metrado_fijo']
     
     suma_metrado = edited_df['metrado_fijo'].sum()
-    suma_modificada = edited_df['cantidad_modificada_calc'].sum()
-    diferencia = nuevo_adquirido - suma_modificada
+    suma_parcial_1 = edited_df['parcial_1'].sum()
+    suma_parcial_2 = edited_df['parcial_2'].sum()
+    diferencia = nuevo_adquirido - suma_parcial_2
     
     st.write("### 4. Resultados Parciales y Totales")
     
     # Crear DataFrame de visualización con los parciales y la fila de sumas
-    df_display = edited_df[['codigo_partida', 'partida_desc', 'metrado_fijo', 'incidencia', 'cantidad_modificada_calc']].copy()
-    df_display.columns = ['Código Partida', 'Descripción Partida', 'Metrado Fijo', 'Incidencia', 'CANTIDAD MODIFICADA (Parcial)']
+    # Replicando el metrado fijo de nuevo como pidió el usuario para el APU 2
+    df_display = edited_df[['item_1', 'codigo_insumo', 'partida_desc', 'unidad', 'cantidad_1', 'metrado_fijo', 'parcial_1', 'cantidad_2', 'metrado_fijo', 'parcial_2']].copy()
+    # Para poder tener dos columnas iguales en pandas, las nombramos distinto
+    df_display.columns = ['Item 1', 'Código 1', 'Descripción', 'Unid.', 'Cantidad 1', 'Metrado Fijo 1', 'Parcial 1', 'Cantidad 2', 'Metrado Fijo 2', 'Parcial 2']
     
     # Fila de totales
     df_totales = pd.DataFrame([{
-        'Código Partida': '🟢 TOTALES',
-        'Descripción Partida': '',
-        'Metrado Fijo': suma_metrado,
-        'Incidencia': None, # No sumar incidencia
-        'CANTIDAD MODIFICADA (Parcial)': suma_modificada
+        'Item 1': '🟢 TOTALES',
+        'Código 1': '',
+        'Descripción': '',
+        'Unid.': '',
+        'Cantidad 1': None,
+        'Metrado Fijo 1': suma_metrado,
+        'Parcial 1': suma_parcial_1,
+        'Cantidad 2': None,
+        'Metrado Fijo 2': suma_metrado,
+        'Parcial 2': suma_parcial_2
     }])
     
     df_final = pd.concat([df_display, df_totales], ignore_index=True)
@@ -106,16 +119,19 @@ if insumo_seleccionado:
         hide_index=True, 
         use_container_width=True,
         column_config={
-            "Metrado Fijo": st.column_config.NumberColumn(format="%.4f"),
-            "Incidencia": st.column_config.NumberColumn(format="%.6f"),
-            "CANTIDAD MODIFICADA (Parcial)": st.column_config.NumberColumn(format="%.4f")
+            "Cantidad 1": st.column_config.NumberColumn(format="%.6f"),
+            "Metrado Fijo 1": st.column_config.NumberColumn(format="%.4f"),
+            "Parcial 1": st.column_config.NumberColumn(format="%.4f"),
+            "Cantidad 2": st.column_config.NumberColumn(format="%.6f"),
+            "Metrado Fijo 2": st.column_config.NumberColumn(format="%.4f"),
+            "Parcial 2": st.column_config.NumberColumn(format="%.4f")
         }
     )
     
     st.write("---")
     c1, c2, c3 = st.columns(3)
     c1.metric("Total Adquirido (Dato)", f"{nuevo_adquirido:.4f} {unidad_insumo}")
-    c2.metric("Suma Modificada (Calculada)", f"{suma_modificada:.4f} {unidad_insumo}")
+    c2.metric("Suma Parcial 2 (APU Nuevo)", f"{suma_parcial_2:.4f} {unidad_insumo}")
     
     if abs(diferencia) < 0.0001:
         c3.metric("Diferencia", f"{diferencia:.4f}", "¡Cuadre Exacto!")
@@ -129,8 +145,8 @@ if insumo_seleccionado:
             with engine.begin() as conn:
                 for _, row in edited_df.iterrows():
                     insumo_id = int(row['id'])
-                    nueva_incidencia = float(row['incidencia'])
-                    nueva_modificada = float(row['cantidad_modificada_calc'])
+                    nueva_incidencia = float(row['cantidad_2'])
+                    nueva_modificada = float(row['parcial_2'])
                     
                     update_query = text("""
                         UPDATE insumos 
