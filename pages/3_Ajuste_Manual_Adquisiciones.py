@@ -38,13 +38,38 @@ if insumo_seleccionado:
     df_impacto = get_dataframe(query, params={"desc": insumo_seleccionado})
     
     # Asumimos que el adquirido es igual para todas las filas de este insumo
-    adquirido_actual = df_impacto['cantidad_adquirida'].iloc[0] if not df_impacto.empty else 0.0
+    # 2.5 Cargar Historial de Compras de la DB
+    query_compras = """
+        SELECT orden_doc as "Orden/Doc", detalle_compra as "Detalle", 
+               cant_c as "Cantidad", pu_c as "Precio Unit.", total_c as "Total", 
+               observacion as "Observación"
+        FROM compras 
+        WHERE insumo_descripcion = %(desc)s
+        ORDER BY id
+    """
+    df_compras = get_dataframe(query_compras, params={"desc": insumo_seleccionado})
+    
     unidad_insumo = df_impacto['unidad'].iloc[0] if not df_impacto.empty else ""
+    
+    total_adquirido_compras = df_compras['Cantidad'].sum() if not df_compras.empty else 0.0
+    suma_importe_compras = df_compras['Total'].sum() if not df_compras.empty else 0.0
+    precio_promedio = suma_importe_compras / total_adquirido_compras if total_adquirido_compras > 0 else 0.0
 
     st.subheader(f"2. Cuadre Manual: {insumo_seleccionado} ({unidad_insumo})")
     
+    with st.expander("🛒 Ver Historial de Compras (Adquisición Real)", expanded=True):
+        if df_compras.empty:
+            st.info("No se encontraron compras registradas para este insumo.")
+        else:
+            st.dataframe(df_compras, hide_index=True, use_container_width=True)
+            
+        ca1, ca2, ca3 = st.columns(3)
+        ca1.metric("Total Adquirido (Suma Cantidades)", f"{total_adquirido_compras:,.4f} {unidad_insumo}")
+        ca2.metric("Suma Total (Costo)", f"S/ {suma_importe_compras:,.2f}")
+        ca3.metric("Precio Promedio Ponderado", f"S/ {precio_promedio:,.4f}")
+    
     st.write("### 3. Edición de Adquisición e Incidencias (APU 2)")
-    st.info("Edite la **Cant. Adquirida** y la **CANTIDAD 2 (Incidencia)**. El sistema calculará automáticamente el Parcial 2 abajo.")
+    st.info(f"Distribuya los **{total_adquirido_compras:,.4f}** adquiridos en la **Cant. Adquirida** de cada partida y edite la **CANTIDAD 2 (Incidencia)**.")
     
     # Preparamos el dataframe para el editor
     df_editor = df_impacto[['id', 'item_1', 'codigo_insumo', 'partida_desc', 'unidad', 'cantidad_1', 'metrado_fijo', 'parcial_1', 'cantidad_adquirida', 'cantidad_2']].copy()
@@ -120,14 +145,20 @@ if insumo_seleccionado:
     )
     
     st.write("---")
-    c1, c2, c3 = st.columns(3)
-    c1.metric("Suma Total Adquirida", f"{suma_adquirida:.4f} {unidad_insumo}")
-    c2.metric("Suma Parcial 2 (APU Nuevo)", f"{suma_parcial_2:.4f} {unidad_insumo}")
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Total Compras (DB)", f"{total_adquirido_compras:.4f} {unidad_insumo}")
+    
+    dif_distribucion = suma_adquirida - total_adquirido_compras
+    c2.metric("Total Distribuido", f"{suma_adquirida:.4f} {unidad_insumo}", 
+              delta="Cuadre Perfecto" if abs(dif_distribucion) < 0.0001 else f"{dif_distribucion:.4f}", 
+              delta_color="normal" if abs(dif_distribucion) < 0.0001 else "inverse")
+              
+    c3.metric("Suma Parcial 2 (APU)", f"{suma_parcial_2:.4f} {unidad_insumo}")
     
     if abs(diferencia) < 0.0001:
-        c3.metric("Diferencia", f"{diferencia:.4f}", "¡Cuadre Exacto!")
+        c4.metric("Diferencia (Dist. vs APU)", f"{diferencia:.4f}", "¡Cuadre Exacto!")
     else:
-        c3.metric("Diferencia", f"{diferencia:.4f}", f"Faltan/Sobran {diferencia:.4f}" if diferencia > 0 else f"Sobran {abs(diferencia):.4f}", delta_color="inverse")
+        c4.metric("Diferencia (Dist. vs APU)", f"{diferencia:.4f}", f"Diferencia: {diferencia:.4f}", delta_color="inverse")
         
     # Botón de guardar
     if st.button("💾 Guardar Cambios en PostgreSQL", type="primary"):

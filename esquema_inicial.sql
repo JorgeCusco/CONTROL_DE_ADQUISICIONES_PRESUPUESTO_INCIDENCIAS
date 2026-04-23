@@ -36,3 +36,24 @@ CREATE TABLE IF NOT EXISTS insumos (
 
 -- Crear índices para mejorar el rendimiento de las consultas
 CREATE INDEX IF NOT EXISTS idx_insumos_codigo_partida ON insumos(codigo_partida);
+
+-- 3. Tabla Compras (Logística)
+CREATE TABLE IF NOT EXISTS compras (
+    id SERIAL PRIMARY KEY,
+    insumo_descripcion TEXT NOT NULL, -- Columna D: DESCRIPCION (P)
+    item_c VARCHAR(50),
+    anio_c VARCHAR(20),
+    tipo_c VARCHAR(50),
+    orden_doc VARCHAR(100),
+    detalle_compra TEXT,
+    unidad_c VARCHAR(20),
+    cant_c NUMERIC(15, 4) NOT NULL DEFAULT 0.0000,
+    pu_c NUMERIC(15, 4) NOT NULL DEFAULT 0.0000,
+    total_c NUMERIC(15, 4) NOT NULL DEFAULT 0.0000,
+    exp_c VARCHAR(100),
+    opinion_comentario TEXT,
+    observacion TEXT,
+    especialidad VARCHAR(100)
+);
+
+CREATE INDEX IF NOT EXISTS idx_compras_insumo_descripcion ON compras(insumo_descripcion);
