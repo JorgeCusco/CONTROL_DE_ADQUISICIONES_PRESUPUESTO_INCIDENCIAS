@@ -24,10 +24,36 @@ Almacena la jerarquía y detalles principales del Expediente Técnico.
 Almacena los insumos relacionados a cada partida para el control y cuadre.
 - `id` (SERIAL, PK): Identificador único del registro.
 - `codigo_partida` (VARCHAR 50, FK): Llave foránea hacia `partidas(codigo)`.
+- `item_1` (VARCHAR): Identificador de ítem.
+- `codigo_insumo` (VARCHAR): Código específico del insumo.
 - `descripcion` (TEXT): Nombre o descripción del insumo.
-- `unidad` (VARCHAR 20): Unidad de medida.
-- `incidencia` (NUMERIC 15,4): Incidencia del insumo con 4 decimales.
-- `cantidad_adquirida` (NUMERIC 15,4): Valor objetivo a cuadrar.
-- `cantidad_modificada` (NUMERIC 15,4): Cantidad calculada por el motor matemático.
+- `unidad` (VARCHAR): Unidad de medida.
+- `incidencia_original` (NUMERIC): Incidencia base del Expediente.
+- `parcial_original` (NUMERIC): Costo parcial original.
+- `incidencia` (NUMERIC): Incidencia ajustada.
+- `cantidad_modificada` (NUMERIC): Cantidad calculada por el motor matemático.
+- `cantidad_adquirida` (NUMERIC): Valor objetivo a cuadrar.
+
+#### 3. `compras`
+Registro detallado de adquisiciones realizadas.
+- `id` (SERIAL, PK): Identificador único.
+- `insumo_descripcion` (TEXT): Descripción del insumo comprado.
+- `item_c`, `anio_c`, `tipo_c` (VARCHAR): Datos de clasificación de la compra.
+- `orden_doc` (VARCHAR): Documento u orden de compra.
+- `detalle_compra` (TEXT): Detalles adicionales.
+- `unidad_c` (VARCHAR): Unidad de medida en compra.
+- `cant_c` (NUMERIC): Cantidad comprada.
+- `pu_c` (NUMERIC): Precio unitario.
+- `total_c` (NUMERIC): Total de la compra.
+- `exp_c` (VARCHAR): Expediente relacionado.
+- `opinion_comentario`, `observacion` (TEXT): Notas y revisiones.
+- `especialidad` (VARCHAR): Especialidad del insumo.
+
+## 3. Registro de Cambios
+
+| Fecha | Cambio | Autor |
+| :--- | :--- | :--- |
 | 2026-04-21 | Inicialización del documento. Base de datos vacía. | N/A |
 | 2026-04-21 | Creación de base de datos y esquema inicial. Ingesta de datos desde Excel completada. | Jorge Cusco |
+| 2026-04-24 | Sincronización de arquitectura con base de datos real (Tablas: partidas, insumos, compras). | Antigravity AI |
+
