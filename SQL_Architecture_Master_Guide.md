@@ -49,6 +49,23 @@ Registro detallado de adquisiciones realizadas.
 - `opinion_comentario`, `observacion` (TEXT): Notas y revisiones.
 - `especialidad` (VARCHAR): Especialidad del insumo.
 
+#### 4. `apus_detallado`
+Registro extraído y aplanado de los Análisis de Precios Unitarios (APUs).
+- `Partida_Codigo` (TEXT): Código de la partida.
+- `Partida_Descripcion` (TEXT): Nombre de la partida.
+- `Partida_Rendimiento` (TEXT): Rendimiento diario.
+- `Partida_Unidad` (TEXT): Unidad de medida.
+- `Partida_Costo_Unitario` (NUMERIC): Costo presupuestado.
+- `Tipo_Insumo` (TEXT): MANO DE OBRA, MATERIALES, EQUIPO.
+- `Insumo_Codigo` (TEXT): Código del insumo.
+- `Insumo_Descripcion` (TEXT): Nombre del insumo dentro del APU.
+- `Insumo_Unidad` (TEXT): Unidad del insumo.
+- `Insumo_Recursos` (TEXT): Recursos asignados.
+- `Insumo_Cantidad` (NUMERIC): Cantidad base (incidencia) en el APU.
+- `Insumo_Precio` (NUMERIC): Precio del insumo.
+- `Insumo_Parcial` (NUMERIC): Costo parcial en el APU.
+- `id` (SERIAL, PK): Agregado automáticamente.
+
 ## 3. Registro de Cambios
 
 | Fecha | Cambio | Autor |
@@ -56,4 +73,5 @@ Registro detallado de adquisiciones realizadas.
 | 2026-04-21 | Inicialización del documento. Base de datos vacía. | N/A |
 | 2026-04-21 | Creación de base de datos y esquema inicial. Ingesta de datos desde Excel completada. | Jorge Cusco |
 | 2026-04-24 | Sincronización de arquitectura con base de datos real (Tablas: partidas, insumos, compras). | Antigravity AI |
+| 2026-04-24 | Creación de la tabla `apus_detallado` con los datos aplanados del Excel APUS.xlsx. | Antigravity AI |
 

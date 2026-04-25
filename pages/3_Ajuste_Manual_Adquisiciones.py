@@ -40,8 +40,11 @@ if insumo_seleccionado:
     # Asumimos que el adquirido es igual para todas las filas de este insumo
     # 2.5 Cargar Historial de Compras de la DB
     query_compras = """
-        SELECT orden_doc as "Orden/Doc", detalle_compra as "Detalle", 
-               cant_c as "Cantidad", pu_c as "Precio Unit.", total_c as "Total", 
+        SELECT id, orden_doc as "Orden/Doc", detalle_compra as "Detalle", 
+               unidad_c as "Unidad Orig.", cant_c as "Cant. Orig.", 
+               COALESCE(unidad_und, unidad_c) as "Unidad", 
+               COALESCE(cantidad_und, cant_c) as "Cantidad_Und",
+               pu_c as "Precio Unit.", total_c as "Total", 
                observacion as "Observación"
         FROM compras 
         WHERE insumo_descripcion = %(desc)s
@@ -49,27 +52,83 @@ if insumo_seleccionado:
     """
     df_compras = get_dataframe(query_compras, params={"desc": insumo_seleccionado})
     
-    unidad_insumo = df_impacto['unidad'].iloc[0] if not df_impacto.empty else ""
+    # Obtener todas las unidades registradas para el desplegable
+    df_units = get_dataframe("SELECT DISTINCT unidad FROM insumos UNION SELECT DISTINCT unidad_c FROM compras WHERE unidad_c IS NOT NULL")
+    lista_unidades = df_units['unidad'].dropna().tolist() if not df_units.empty else ["und"]
     
-    total_adquirido_compras = df_compras['Cantidad'].sum() if not df_compras.empty else 0.0
-    suma_importe_compras = df_compras['Total'].sum() if not df_compras.empty else 0.0
-    precio_promedio = suma_importe_compras / total_adquirido_compras if total_adquirido_compras > 0 else 0.0
+    # Forzar que la columna sea categórica para que Streamlit muestre siempre el desplegable
+    if not df_compras.empty and "Unidad" in df_compras.columns:
+        df_compras['Unidad'] = pd.Categorical(df_compras['Unidad'], categories=lista_unidades)
+        
+    unidad_insumo = df_impacto['unidad'].iloc[0] if not df_impacto.empty else ""
 
     st.subheader(f"2. Cuadre Manual: {insumo_seleccionado} ({unidad_insumo})")
     
-    with st.expander("🛒 Ver Historial de Compras (Adquisición Real)", expanded=True):
+    with st.expander("🛒 Cuadre Manual de Compras (Unificar Unidades)", expanded=True):
         if df_compras.empty:
             st.info("No se encontraron compras registradas para este insumo.")
+            edited_compras = df_compras
         else:
-            st.dataframe(df_compras, hide_index=True, use_container_width=True)
+            st.write("Edita la **Unidad** y la **Cantidad_Und** para unificar y cuadrar las compras. El Precio Promedio Ponderado se calculará con estos valores.")
             
+            # Configurar el editor
+            compras_col_config = {
+                "id": None, # Ocultar id
+                "Orden/Doc": st.column_config.TextColumn("Orden/Doc", disabled=True),
+                "Detalle": st.column_config.TextColumn("Detalle", disabled=True),
+                "Unidad Orig.": st.column_config.TextColumn("Unidad Orig.", disabled=True),
+                "Cant. Orig.": st.column_config.NumberColumn("Cant. Orig.", disabled=True, format="%.4f"),
+                "Unidad": st.column_config.SelectboxColumn("Unidad (Editable)", options=lista_unidades, required=True),
+                "Cantidad_Und": st.column_config.NumberColumn("Cantidad_Und (Editable)", format="%.4f", required=True),
+                "Precio Unit.": st.column_config.NumberColumn("Precio Unit.", disabled=True, format="%.4f"),
+                "Total": st.column_config.NumberColumn("Total", disabled=True, format="%.2f"),
+                "Observación": st.column_config.TextColumn("Observación", disabled=True)
+            }
+            
+            edited_compras = st.data_editor(
+                df_compras,
+                column_config=compras_col_config,
+                hide_index=True,
+                use_container_width=True,
+                key=f"editor_compras_{insumo_seleccionado}"
+            )
+            
+            if st.button("💾 Guardar Cuadre de Compras", type="secondary"):
+                try:
+                    engine = get_engine()
+                    with engine.begin() as conn:
+                        for _, row in edited_compras.iterrows():
+                            compra_id = int(row['id'])
+                            nueva_und = str(row['Unidad'])
+                            nueva_cant = float(row['Cantidad_Und'])
+                            
+                            update_query = text("""
+                                UPDATE compras 
+                                SET unidad_und = :und, 
+                                    cantidad_und = :cant
+                                WHERE id = :id
+                            """)
+                            conn.execute(update_query, {
+                                "und": nueva_und,
+                                "cant": nueva_cant,
+                                "id": compra_id
+                            })
+                    st.success("✅ Cuadre de compras guardado en la Base de Datos.")
+                except Exception as e:
+                    st.error(f"Error al guardar compras: {e}")
+
+        # Calcular totales usando Cantidad_Und válida para los cálculos
+        total_adquirido_compras = edited_compras['Cantidad_Und'].sum() if not edited_compras.empty else 0.0
+        suma_importe_compras = edited_compras['Total'].sum() if not edited_compras.empty else 0.0
+        precio_promedio = suma_importe_compras / total_adquirido_compras if total_adquirido_compras > 0 else 0.0
+        
         ca1, ca2, ca3 = st.columns(3)
-        ca1.metric("Total Adquirido (Suma Cantidades)", f"{total_adquirido_compras:,.4f} {unidad_insumo}")
+        ca1.metric("Total Adquirido Válido", f"{total_adquirido_compras:,.4f}")
         ca2.metric("Suma Total (Costo)", f"S/ {suma_importe_compras:,.2f}")
         ca3.metric("Precio Promedio Ponderado", f"S/ {precio_promedio:,.4f}")
     
     st.write("### 3. Edición de Adquisición e Incidencias (APU 2)")
-    st.info(f"Distribuya los **{total_adquirido_compras:,.4f}** adquiridos en la **Cant. Adquirida** de cada partida y edite la **CANTIDAD 2 (Incidencia)**.")
+    st.info(f"Distribuya los **{total_adquirido_compras:,.4f}** adquiridos válidos en la **Cant. Adquirida** de cada partida y edite la **CANTIDAD 2 (Incidencia)**.")
     
     # Preparamos el dataframe para el editor
     df_editor = df_impacto[['id', 'item_1', 'codigo_insumo', 'partida_desc', 'unidad', 'cantidad_1', 'metrado_fijo', 'parcial_1', 'cantidad_adquirida', 'cantidad_2']].copy()
