@@ -174,6 +174,59 @@ export default function Home() {
     }
   }, [sumAdquiridoValido, isMetaLocked]);
 
+  const autoSaveApu = async (apu: Apu) => {
+    try {
+      setNotification('⏳ Guardando APU automáticamente...');
+      const updatePayload = {
+        id: apu.id,
+        cantidad_2: Number(apu.cantidad_2),
+        cantidad_adquirida: globalAdquirido,
+        cantidad_modificada: Number(apu.cantidad_2) * Number(apu.metrado_fijo)
+      };
+      
+      const res = await fetch('/api/apu', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ updates: [updatePayload] })
+      });
+
+      if (res.ok) {
+        setNotification('✅ Cambio en APU guardado automáticamente.');
+        setTimeout(() => setNotification(''), 2000);
+      } else {
+        setNotification('❌ Error al auto-guardar APU.');
+      }
+    } catch(e) {
+      setNotification('❌ Error de conexión al auto-guardar.');
+    }
+  };
+
+  const autoSaveGlobalMeta = async () => {
+    if (isMetaLocked) return; // Si está bloqueado se sincroniza solo, no forzamos DB si no es edición manual o en save global
+    try {
+      setNotification('⏳ Guardando Meta Global...');
+      const updatesApu = apuData.map(a => ({
+        id: a.id,
+        cantidad_2: Number(a.cantidad_2),
+        cantidad_adquirida: globalAdquirido,
+        cantidad_modificada: Number(a.cantidad_2) * Number(a.metrado_fijo)
+      }));
+      
+      const res = await fetch('/api/apu', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ updates: updatesApu })
+      });
+      
+      if (res.ok) {
+        setNotification('✅ Meta Global guardada en todas las partidas.');
+        setTimeout(() => setNotification(''), 2000);
+      }
+    } catch(e) {
+      setNotification('❌ Error de conexión al guardar Meta Global.');
+    }
+  };
+
   // Save to DB
   const handleSave = async () => {
     setSaving(true);
@@ -484,6 +537,7 @@ export default function Home() {
                   className="meta-input"
                   value={globalAdquirido} 
                   onChange={(e) => setGlobalAdquirido(parseFloat(e.target.value) || 0)}
+                  onBlur={autoSaveGlobalMeta}
                   disabled={isMetaLocked}
                   style={{
                     width: '100%',
@@ -590,6 +644,7 @@ export default function Home() {
                             style={{fontWeight: 'bold', color: '#0f172a'}}
                             value={apu.cantidad_2} 
                             onChange={(e) => handleApuEdit(index, 'cantidad_2', parseFloat(e.target.value) || 0)}
+                            onBlur={() => autoSaveApu(apu)}
                           />
                         </td>
                         
@@ -603,6 +658,7 @@ export default function Home() {
                               selectedInsumoName={selectedInsumo}
                               modifiedIncidencia={Number(apu.cantidad_2)}
                               onIncidenciaChange={(val) => handleApuEdit(index, 'cantidad_2', val)}
+                              onIncidenciaBlur={() => autoSaveApu(apu)}
                             />
                           </td>
                         </tr>

@@ -13,12 +13,14 @@ export default function ApuComparative({
   codigoPartida,
   selectedInsumoName,
   modifiedIncidencia,
-  onIncidenciaChange
+  onIncidenciaChange,
+  onIncidenciaBlur
 }: {
   codigoPartida: string;
   selectedInsumoName: string;
   modifiedIncidencia: number;
   onIncidenciaChange: (val: number) => void;
+  onIncidenciaBlur?: () => void;
 }) {
   const [insumos, setInsumos] = useState<InsumoAPU[]>([]);
   const [rendimientoOriginal, setRendimientoOriginal] = useState<string>('');
@@ -143,6 +145,7 @@ export default function ApuComparative({
                         step="0.000001"
                         value={modifiedIncidencia}
                         onChange={(e) => onIncidenciaChange(parseFloat(e.target.value) || 0)}
+                        onBlur={onIncidenciaBlur}
                         style={{width: '80px', textAlign: 'right', padding: '2px', border: '1px solid #2563eb', fontWeight: 'bold'}}
                       />
                     ) : (
