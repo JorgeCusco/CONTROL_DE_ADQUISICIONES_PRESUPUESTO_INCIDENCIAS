@@ -4,40 +4,128 @@
   "descripcion": "Skills de automatización para el equipo de 6 personas",
   "skills": [
     {
+      "nombre": "belempampa_regularizacion",
+      "version": "1.0.0",
+      "ruta": ".agents/belempampa_skill_guide.md",
+      "tipo": "guia_integral",
+      "descripcion": "Sistema completo de regularización y auditoría de obra pública. Incluye BD schema, APIs, documentación, y plan de 5 fases",
+      "activadores": [
+        "analizar base de datos belempampa",
+        "ver estructura de insumos",
+        "schema de BD",
+        "plan de regularizacion",
+        "vinculador de insumos",
+        "cuestionario de auditoria"
+      ],
+      "componentes": {
+        "documentacion": [
+          "GUIA_SISTEMA_BELEMPAMPA.md",
+          "PLAN_REGULARIZACION.md",
+          "CUESTIONARIO_REGULARIZACION.md",
+          "SCHEMA_BD.md"
+        ],
+        "api_endpoints": [
+          "/api/schema",
+          "/api/partidas",
+          "/api/insumos",
+          "/api/compras",
+          "/api/vinculacion",
+          "/api/exportar"
+        ],
+        "scripts": [
+          "cargar_apus_correctamente.py",
+          "reconstruir_desde_apus.py",
+          "actualizar_descripciones_partidas.py",
+          "cargar_datos_correctamente.py",
+          "diagnostico_regularizacion.py"
+        ],
+        "modulos_frontend": [
+          "/control-insumos",
+          "/ajuste-manual",
+          "/vinculador"
+        ]
+      },
+      "bd_config": {
+        "nombre": "7_insumos_rado",
+        "motor": "PostgreSQL",
+        "host": "localhost",
+        "puerto": 5432,
+        "usuario": "postgres",
+        "tablas": 8,
+        "registros_totales": 17699
+      },
+      "status": "operacional",
+      "fase": "2 de 5 (48% progreso)"
+    },
+    {
       "nombre": "optimizacion_metrados",
       "ruta": ".agents/skills/optimizacion_metrados",
-      "activadores": ["cuadrar los metrados", "ajustar modificados", "distribuir proporcionalmente", "la suma no cierra"],
+      "activadores": [
+        "cuadrar los metrados",
+        "ajustar modificados",
+        "distribuir proporcionalmente",
+        "la suma no cierra"
+      ],
       "script_principal": "scripts/calcular_distribucion.py",
-      "dependencias": ["scipy", "numpy"]
+      "dependencias": [
+        "scipy",
+        "numpy"
+      ]
     },
     {
       "nombre": "validador_postgresql",
       "ruta": ".agents/skills/validador_postgresql",
-      "activadores": ["valida este SQL", "revisa el esquema", "valida antes de ejecutar", "verifica las tablas"],
+      "activadores": [
+        "valida este SQL",
+        "revisa el esquema",
+        "valida antes de ejecutar",
+        "verifica las tablas"
+      ],
       "script_principal": "scripts/validar_esquema.py",
       "dependencias": []
     },
     {
       "nombre": "validador-streamlit-colaborativo",
       "ruta": ".agents/skills/validador-streamlit-colaborativo",
-      "activadores": ["st.data_editor", "tabla interactiva", "agregar una tabla", "guardar en base de datos"],
+      "activadores": [
+        "st.data_editor",
+        "tabla interactiva",
+        "agregar una tabla",
+        "guardar en base de datos"
+      ],
       "activacion": "automatica",
       "script_principal": null,
-      "dependencias": ["streamlit"]
+      "dependencias": [
+        "streamlit"
+      ]
     },
     {
       "nombre": "exportador-cuadro-osce",
       "ruta": ".agents/skills/exportador-cuadro-osce",
-      "activadores": ["exporta el cuadro OSCE", "genera el comparativo en Excel", "cuadro comparativo para sustentar"],
+      "activadores": [
+        "exporta el cuadro OSCE",
+        "genera el comparativo en Excel",
+        "cuadro comparativo para sustentar"
+      ],
       "script_principal": "scripts/exportar_cuadro_osce.py",
-      "dependencias": ["pandas", "xlsxwriter"]
+      "dependencias": [
+        "pandas",
+        "xlsxwriter"
+      ]
     },
     {
       "nombre": "exportador_reportes",
       "ruta": ".agents/skills/exportador_reportes",
-      "activadores": ["exporta el reporte", "descarga el Excel", "exportar con formato"],
+      "activadores": [
+        "exporta el reporte",
+        "descarga el Excel",
+        "exportar con formato"
+      ],
       "script_principal": "scripts/exportar_excel.py",
-      "dependencias": ["pandas", "xlsxwriter"]
+      "dependencias": [
+        "pandas",
+        "xlsxwriter"
+      ]
     }
   ],
   "mcp": {
