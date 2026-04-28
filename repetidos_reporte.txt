@@ -1,0 +1,201 @@
+REPORTE DE VALORES REPETIDOS PARA COMPROBACION MANUAL
+Total de items repetidos: 66
+
+-> PUNTERA PH2
+   Aparece 4 veces en la BD | Suma total de cantidades: 31.0000
+
+-> YESO
+   Aparece 4 veces en la BD | Suma total de cantidades: 15.0000
+
+-> ARENA GRUESA
+   Aparece 3 veces en la BD | Suma total de cantidades: 320.0000
+
+-> CODO PVC SAL 90"X2(IM) DESAGÜE PAVCO
+   Aparece 3 veces en la BD | Suma total de cantidades: 0.0000
+
+-> DISCO DE CORTE 9" BOSCH
+   Aparece 3 veces en la BD | Suma total de cantidades: 35.0000
+
+-> GUANTE ANTICORTE NIVEL 5 PALMA PU
+   Aparece 3 veces en la BD | Suma total de cantidades: 140.0000
+
+-> GUANTES DE JEBE
+   Aparece 3 veces en la BD | Suma total de cantidades: 250.0000
+
+-> PARANTE 38X38X0.45MM X 3M
+   Aparece 3 veces en la BD | Suma total de cantidades: 1300.0000
+
+-> YEE PVC SAL 2X2 (IM) DESAGÜE PAVCO
+   Aparece 3 veces en la BD | Suma total de cantidades: 0.0000
+
+-> ABRAZADERA DE DOS OREJAS PARA TUBO CONDUIT DE 20MM- NACIONAL F°G° DE FIERRO GALVANIZADO
+   Aparece 2 veces en la BD | Suma total de cantidades: 197.0000
+
+-> ANILLO DE CERA CON GUÍA-METUSA
+   Aparece 2 veces en la BD | Suma total de cantidades: 9.0000
+
+-> ARNÉS DE SEGURIDAD CON LÍNEA DE VIDA
+   Aparece 2 veces en la BD | Suma total de cantidades: 60.0000
+
+-> BASE: USO ARQUITECTÓNICO TIPO: PASTA DILUYENTE: AGUA PRESENTACIÓN: 1 G E/T 2024/SUNCH
+   Aparece 2 veces en la BD | Suma total de cantidades: 540.0000
+
+-> BENTONITA
+   Aparece 2 veces en la BD | Suma total de cantidades: 96.0000
+
+-> BROCA COBALTO 1/8
+   Aparece 2 veces en la BD | Suma total de cantidades: 17.0000
+
+-> CABLE CU N2XOH DE 1X6MM2
+   Aparece 2 veces en la BD | Suma total de cantidades: 1930.0000
+
+-> CABLE DE CU N2XOH DE 1X70MM2
+   Aparece 2 veces en la BD | Suma total de cantidades: 145.0000
+
+-> CAJA OCTOGONAL PESADA F°G° 100X55 MM-NACIONAL /F°G°
+   Aparece 2 veces en la BD | Suma total de cantidades: 65.0000
+
+-> CARETA DE POLIPROPILENO FOTOVOLTAICAS (PARA SOLDAR)
+   Aparece 2 veces en la BD | Suma total de cantidades: 25.0000
+
+-> CASCO PROTECTOR DE SEGURIDAD
+   Aparece 2 veces en la BD | Suma total de cantidades: 160.0000
+
+-> CINTAS DE SEGURIDAD ROJA
+   Aparece 2 veces en la BD | Suma total de cantidades: 15.0000
+
+-> CLAVO DE 3 PULGADAS
+   Aparece 2 veces en la BD | Suma total de cantidades: 0.0000
+
+-> CLAVO DE 4 PULGADAS
+   Aparece 2 veces en la BD | Suma total de cantidades: 0.0000
+
+-> CLAVO S/C 1 PULG.
+   Aparece 2 veces en la BD | Suma total de cantidades: 2.0000
+
+-> CLAVOS PARA MADERA CON CABEZA DE 5"
+   Aparece 2 veces en la BD | Suma total de cantidades: 0.0000
+
+-> DADO 5/16
+   Aparece 2 veces en la BD | Suma total de cantidades: 2.0000
+
+-> DISCO CORTE DI
+   Aparece 2 veces en la BD | Suma total de cantidades: 2.0000
+
+-> GASOHOL REGULAR
+   Aparece 2 veces en la BD | Suma total de cantidades: 600.0000
+
+-> GUANTES DE CUERO BADANA
+   Aparece 2 veces en la BD | Suma total de cantidades: 450.0000
+
+-> HOJA DE SIERRA SANDFLEX N° 24 D
+   Aparece 2 veces en la BD | Suma total de cantidades: 0.0000
+
+-> INTERRUPTOR SIMPLE CON PLACA DE ACERO INOXIDABLE
+   Aparece 2 veces en la BD | Suma total de cantidades: 82.0000
+
+-> LAVATORIO DE LOZA CON PEDESTAL, INCLUYE ACCESORIOS-TREBOL
+   Aparece 2 veces en la BD | Suma total de cantidades: 6.0000
+
+-> LENTES DE PROTECCIÓN DE POLICARBONATO LUNAS CLARAS
+   Aparece 2 veces en la BD | Suma total de cantidades: 250.0000
+
+-> LIJAR PARA METAL N° 120
+   Aparece 2 veces en la BD | Suma total de cantidades: 1100.0000
+
+-> LUMINARIA EXTERIOR ORNAMENTAL
+   Aparece 2 veces en la BD | Suma total de cantidades: 18.0000
+
+-> LUMINARIA PANEL LED CUADRADA 0.60 X 0.60 M, DE 36W, PARA EMPOTRAR
+   Aparece 2 veces en la BD | Suma total de cantidades: 241.0000
+
+-> LUNAS OSCURAS PARA CASCO DE SOLDAR
+   Aparece 2 veces en la BD | Suma total de cantidades: 10.0000
+
+-> LUNAS TRANSPARENTES PARA CASCO DE SOLDAR
+   Aparece 2 veces en la BD | Suma total de cantidades: 20.0000
+
+-> MASILLA BONFLEX PREMIUM ANYPSA 2.4 KG
+   Aparece 2 veces en la BD | Suma total de cantidades: 2.0000
+
+-> MONITOR LCD CON RETRO ILUMINACIÓN LED 27.0"
+   Aparece 2 veces en la BD | Suma total de cantidades: 3.0000
+
+-> PARANTE 89X38X0.45MM X 3M
+   Aparece 2 veces en la BD | Suma total de cantidades: 3800.0000
+
+-> PEGAMENTO OATEY REGULAR DORADO 1/16 - 8 ONZ
+   Aparece 2 veces en la BD | Suma total de cantidades: 1.0000
+
+-> PONCHOS IMPERMEABLES PARA LLUVIA
+   Aparece 2 veces en la BD | Suma total de cantidades: 120.0000
+
+-> PROTECTOR AUDITIVO TIPO TAPÓN CON ESTUCHE
+   Aparece 2 veces en la BD | Suma total de cantidades: 200.0000
+
+-> PUNTERA PH-2
+   Aparece 2 veces en la BD | Suma total de cantidades: 0.0000
+
+-> PUNTERA PH2-TRUPER
+   Aparece 2 veces en la BD | Suma total de cantidades: 4.0000
+
+-> PUNTERA PZ-2
+   Aparece 2 veces en la BD | Suma total de cantidades: 16.0000
+
+-> PUNTERA PZ2
+   Aparece 2 veces en la BD | Suma total de cantidades: 12.0000
+
+-> REGISTRO CON ROSCA DE BRONCE CROMADO DE 4IN-NECO
+   Aparece 2 veces en la BD | Suma total de cantidades: 29.0000
+
+-> RIEL 39X25X0.45MM X 3M
+   Aparece 2 veces en la BD | Suma total de cantidades: 600.0000
+
+-> ROTOMARTILLO DEMOLEDOR DE 2000W
+   Aparece 2 veces en la BD | Suma total de cantidades: 2.0000
+
+-> ROTOMARTILLO PERFORADOR DE 1100 W
+   Aparece 2 veces en la BD | Suma total de cantidades: 2.0000
+
+-> SELLADOR CPP X4GLNS
+   Aparece 2 veces en la BD | Suma total de cantidades: 4.0000
+
+-> SERVICIO DE REPARACIÓN DE 35 CERRADURAS A 10 C/U
+   Aparece 2 veces en la BD | Suma total de cantidades: 1.0000
+
+-> SOLDADURA 6011
+   Aparece 2 veces en la BD | Suma total de cantidades: 300.0000
+
+-> TABLERO DE TRIPLAY: CARA: FENÓLICO, LARGO: 2440 MM., ANCHO: 1220 MM., ESPESOR: 18 MM.
+   Aparece 2 veces en la BD | Suma total de cantidades: 70.0000
+
+-> TACO DE EXPANSIÓN DE ACERO 3/8 IN X 1 1/2 IN -NACIONAL
+   Aparece 2 veces en la BD | Suma total de cantidades: 600.0000
+
+-> TALCO AMERICANO
+   Aparece 2 veces en la BD | Suma total de cantidades: 20.0000
+
+-> TIERRA NEGRA
+   Aparece 2 veces en la BD | Suma total de cantidades: 93.0000
+
+-> TORNILLO DRYWALL 6X25 MM(1PULG.) P/FINA AUTOVELLANANTE POWERTEK FA
+   Aparece 2 veces en la BD | Suma total de cantidades: 60.0000
+
+-> TORNILLO WAFER 8X1/2 P.F.
+   Aparece 2 veces en la BD | Suma total de cantidades: 7.0000
+
+-> TORNILLO WAFER 8X3/4 P.B
+   Aparece 2 veces en la BD | Suma total de cantidades: 0.0000
+
+-> TORNILLO WAFER PF
+   Aparece 2 veces en la BD | Suma total de cantidades: 3000.0000
+
+-> TUBO PVC SAL CL 2X3M NTP 399.003 PAVCO WAVIN HT
+   Aparece 2 veces en la BD | Suma total de cantidades: 0.0000
+
+-> TUBO PVC SAL CL 4X3M NTP 399.003 PAVCO
+   Aparece 2 veces en la BD | Suma total de cantidades: 0.0000
+
+-> WUAYPE PAÑO FINO
+   Aparece 2 veces en la BD | Suma total de cantidades: 5.0000
+
