@@ -147,9 +147,9 @@ export default function VinculadorPage() {
     return true;
   });
 
-  const vinculadoCount  = comprasData?.compras.filter(c => c.estado === 'vinculado').length ?? 0;
-  const disponibleCount = comprasData?.compras.filter(c => c.estado === 'disponible').length ?? 0;
-  const bloqueadoCount  = comprasData?.compras.filter(c => c.estado === 'bloqueado').length ?? 0;
+  const vinculadoCount  = (comprasData?.compras ?? []).filter(c => c.estado === 'vinculado').length ?? 0;
+  const disponibleCount = (comprasData?.compras ?? []).filter(c => c.estado === 'disponible').length ?? 0;
+  const bloqueadoCount  = (comprasData?.compras ?? []).filter(c => c.estado === 'bloqueado').length ?? 0;
   const meta      = comprasData?.meta_cantidad ?? 0;
   const adquirido = comprasData?.adquirido ?? 0;
   const resta     = meta - adquirido;
