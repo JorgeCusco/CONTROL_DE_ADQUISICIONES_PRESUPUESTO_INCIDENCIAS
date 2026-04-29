@@ -14,13 +14,14 @@ export async function GET(request: Request) {
     
     // Fetch compras for the selected insumo
     const comprasQuery = `
-        SELECT id, orden_doc as "orden", detalle_compra as "detalle", 
-               unidad_c as "unidad_orig", cant_c as "cant_orig", 
-               COALESCE(unidad_und, unidad_c) as "unidad", 
+        SELECT id, orden_doc as "orden", detalle_compra as "detalle",
+               unidad_c as "unidad_orig", cant_c as "cant_orig",
+               COALESCE(unidad_und, unidad_c) as "unidad",
                COALESCE(cantidad_und, cant_c) as "cantidad_und",
-               pu_c as "precio_unit", total_c as "total", 
+               pu_c as "precio_orig",
+               pu_c as "precio_unit", total_c as "total",
                observacion
-        FROM compras 
+        FROM compras
         WHERE insumo_descripcion = $1
         ORDER BY id
     `;

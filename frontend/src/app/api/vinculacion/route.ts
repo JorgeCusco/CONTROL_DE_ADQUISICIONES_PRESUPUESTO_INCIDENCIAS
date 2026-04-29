@@ -16,11 +16,11 @@ export async function GET(request: Request) {
           MAX(i.unidad) AS unidad,
           SUM(i.cantidad_modificada) AS meta_cantidad,
           COUNT(DISTINCT mv.compra_id) AS linked_count,
-          COALESCE(SUM(CASE WHEN mv.compra_id IS NOT NULL THEN COALESCE(c.cantidad_und, c.cant_c, 0) ELSE 0 END), 0) AS adquirido
+          COALESCE(SUM(CASE WHEN mv.compra_id IS NOT NULL THEN COALESCE(c.cantidad_und, c.cant_c, 0) ELSE 0 END), 0) AS adquirido,
+          MAX(CASE WHEN i.es_extra = TRUE THEN 1 ELSE 0 END) AS es_extra
         FROM insumos i
         LEFT JOIN mapeo_vinculacion mv ON mv.insumo_nombre = i.descripcion
         LEFT JOIN compras c ON c.id = mv.compra_id
-        WHERE i.es_extra = FALSE
         GROUP BY i.descripcion
         ORDER BY i.descripcion
       `);

@@ -350,9 +350,9 @@ export default function VinculadorPage() {
                               <div style={{ fontSize: '0.68rem', color: '#64748b' }}>{c.tipo_c} {c.anio_c}</div>
                             </td>
                             <td style={{ padding: '5px 8px', maxWidth: '280px' }}>
-                              <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={c.detalle_compra}>{c.detalle_compra}</div>
-                              {c.insumo_descripcion && c.insumo_descripcion !== selectedInsumo && (
-                                <div style={{ fontSize: '0.65rem', color: '#94a3b8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={c.insumo_descripcion}>doc: {c.insumo_descripcion}</div>
+                              <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 600 }} title={c.insumo_descripcion}>doc: {c.insumo_descripcion}</div>
+                              {selectedInsumo && (
+                                <div style={{ fontSize: '0.65rem', color: '#94a3b8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={selectedInsumo}>{selectedInsumo}</div>
                               )}
                             </td>
                             <td style={{ padding: '5px 8px', textAlign: 'center', color: '#475569' }}>{c.unidad}</td>

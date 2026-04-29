@@ -126,7 +126,30 @@ export default function ControlInsumos() {
           </p>
 
           {notification && (
-            <div style={{padding: '1rem', background: '#d4edda', color: '#155724', borderRadius: '4px', marginBottom: '1rem'}}>
+            <div style={{
+              position: 'fixed',
+              top: '20px',
+              right: '20px',
+              padding: '0.75rem 1.25rem',
+              background: notification.includes('✅') ? '#dcfce7' : notification.includes('⏳') ? '#e0f2fe' : '#fee2e2',
+              color: notification.includes('✅') ? '#166534' : notification.includes('⏳') ? '#0369a1' : '#991b1b',
+              border: `1px solid ${notification.includes('✅') ? '#86efac' : notification.includes('⏳') ? '#7dd3fc' : '#fca5a5'}`,
+              borderRadius: '8px',
+              boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+              zIndex: 9999,
+              fontSize: '0.85rem',
+              fontWeight: '600',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              animation: 'slideIn 0.3s ease-out'
+            }}>
+              <style>{`
+                @keyframes slideIn {
+                  from { transform: translateX(100%); opacity: 0; }
+                  to { transform: translateX(0); opacity: 1; }
+                }
+              `}</style>
               {notification}
             </div>
           )}

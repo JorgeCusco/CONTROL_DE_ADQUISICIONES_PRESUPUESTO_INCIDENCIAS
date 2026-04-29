@@ -12,6 +12,7 @@ type Compra = {
   unidad: string;
   cantidad_und: number;
   precio_unit: number;
+  precio_orig: number;
   total: number;
   observacion: string;
 };
@@ -29,6 +30,7 @@ type Apu = {
   cantidad_2: number;
   cantidad_modificada: number;
   cantidad_adquirida: number;
+  precio_unit_original: number;
 };
 
 export default function Home() {
@@ -154,8 +156,10 @@ export default function Home() {
     let sumaImporte = 0;
     
     compras.forEach(c => {
-      totalAdquirido += Number(c.cantidad_und) || 0;
-      sumaImporte += Number(c.total) || 0;
+      const cant = Number(c.cantidad_und) || 0;
+      const pu = Number(c.precio_unit) || 0;
+      totalAdquirido += cant;
+      sumaImporte += (cant * pu);
     });
 
     const precioPromedio = totalAdquirido > 0 ? (sumaImporte / totalAdquirido) : 0;
@@ -402,7 +406,30 @@ export default function Home() {
           </div>
 
           {notification && (
-            <div style={{padding: '1rem', background: '#d4edda', color: '#155724', borderRadius: '4px', marginBottom: '1rem'}}>
+            <div style={{
+              position: 'fixed',
+              top: '20px',
+              right: '20px',
+              padding: '0.75rem 1.25rem',
+              background: notification.includes('✅') ? '#dcfce7' : notification.includes('⏳') ? '#e0f2fe' : '#fee2e2',
+              color: notification.includes('✅') ? '#166534' : notification.includes('⏳') ? '#0369a1' : '#991b1b',
+              border: `1px solid ${notification.includes('✅') ? '#86efac' : notification.includes('⏳') ? '#7dd3fc' : '#fca5a5'}`,
+              borderRadius: '8px',
+              boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+              zIndex: 9999,
+              fontSize: '0.85rem',
+              fontWeight: '600',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              animation: 'slideIn 0.3s ease-out'
+            }}>
+              <style>{`
+                @keyframes slideIn {
+                  from { transform: translateX(100%); opacity: 0; }
+                  to { transform: translateX(0); opacity: 1; }
+                }
+              `}</style>
               {notification}
             </div>
           )}
@@ -420,6 +447,7 @@ export default function Home() {
                     <th>Detalle</th>
                     <th>Unidad Orig.</th>
                     <th style={{textAlign: 'right'}}>Cant. Orig.</th>
+                    <th style={{textAlign: 'right'}}>Precio Orig.</th>
                     <th>Unidad (Editable)</th>
                     <th style={{textAlign: 'right'}}>Cantidad_Und (Editable)</th>
                     <th style={{textAlign: 'right'}}>Precio Unit.</th>
@@ -443,7 +471,10 @@ export default function Home() {
                           {compra.unidad_orig}
                         </td>
                         <td style={{textAlign: 'right'}}>{Number(compra.cant_orig).toFixed(4)}</td>
-                        
+                        <td style={{textAlign: 'right', color: '#64748b', fontSize: '0.9rem'}}>
+                          S/ {Number(compra.precio_orig).toFixed(2)}
+                        </td>
+
                         {/* EDITABLE UNIT */}
                         <td className="editable" style={{display: 'flex', alignItems: 'center', gap: '0.5rem', border: 'none', background: 'transparent'}}>
                           <select 
@@ -509,22 +540,34 @@ export default function Home() {
           )}
 
           <div className="metrics">
-            <div className="metric-card">
-              <div className="metric-label">Total Adquirido Válido</div>
-              <div className="metric-value">{totals.totalAdquirido.toLocaleString('en-US', {minimumFractionDigits: 4, maximumFractionDigits: 4})}</div>
+            <div className="metric-card" style={{ background: '#fefce8', border: '2px solid #facc15', boxShadow: '0 4px 6px -1px rgba(234, 179, 8, 0.15)' }}>
+              <div className="metric-label" style={{ color: '#854d0e', fontWeight: 'bold' }}>Total Adquirido Válido</div>
+              <div className="metric-value" style={{ color: '#713f12' }}>{totals.totalAdquirido.toLocaleString('en-US', {minimumFractionDigits: 4, maximumFractionDigits: 4})}</div>
             </div>
-            <div className="metric-card">
+            <div className="metric-card" style={{ opacity: 0.6 }}>
               <div className="metric-label">Suma Total (Costo)</div>
               <div className="metric-value">S/ {totals.sumaImporte.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
             </div>
-            <div className="metric-card">
-              <div className="metric-label">Precio Promedio Ponderado</div>
-              <div className="metric-value">S/ {totals.precioPromedio.toLocaleString('en-US', {minimumFractionDigits: 4, maximumFractionDigits: 4})}</div>
+            <div className="metric-card" style={{ background: '#fefce8', border: '2px solid #facc15', boxShadow: '0 4px 6px -1px rgba(234, 179, 8, 0.15)' }}>
+              <div className="metric-label" style={{ color: '#854d0e', fontWeight: 'bold' }}>Precio Promedio Ponderado</div>
+              <div className="metric-value" style={{ color: '#713f12' }}>S/ {totals.precioPromedio.toLocaleString('en-US', {minimumFractionDigits: 4, maximumFractionDigits: 4})}</div>
             </div>
           </div>
           
           <h2 style={{marginTop: '3rem'}}>📊 3. Edición de Incidencias (APU 2)</h2>
-          
+
+          <div style={{marginBottom: '1.5rem', padding: '1.5rem', background: '#dcfce7', borderLeft: '4px solid #16a34a', borderRadius: '4px', border: '2px solid #22c55e'}}>
+            <div style={{display: 'flex', alignItems: 'center', gap: '1.5rem'}}>
+              <div>
+                <div style={{fontSize: '0.9rem', color: '#15803d', fontWeight: '600', marginBottom: '0.25rem'}}>✨ Precio Promedio Ponderado (PPP)</div>
+                <div style={{fontSize: '2rem', fontWeight: 'bold', color: '#166534'}}>S/ {totals.precioPromedio.toLocaleString('en-US', {minimumFractionDigits: 4, maximumFractionDigits: 4})}</div>
+              </div>
+              <div style={{fontSize: '0.85rem', color: '#15803d', fontStyle: 'italic', flex: 1}}>
+                Este es el precio unitario que se usará en el APU Nuevo Modificado para todos los APU de este insumo.
+              </div>
+            </div>
+          </div>
+
           <div style={{marginBottom: '1.5rem', padding: '1.5rem', background: '#eef2ff', borderLeft: '4px solid #4f46e5', borderRadius: '4px'}}>
             <label htmlFor="global-adquirido" style={{fontWeight: 'bold', display: 'block', marginBottom: '0.5rem', color: '#312e81'}}>
               🎯 Meta de Cuadre Global (Total Adquirido Válido a Cuadrar):
@@ -606,19 +649,23 @@ export default function Home() {
                   <th style={{textAlign: 'right'}}>Cantidad 1</th>
                   <th style={{textAlign: 'right'}}>Metrado Fijo</th>
                   <th style={{textAlign: 'right'}}>Parcial 1</th>
+                  <th style={{textAlign: 'right', color: '#64748b'}}>Precio Unit Orig.</th>
                   <th style={{textAlign: 'right', background: '#e2e8f0', color: '#1e293b'}}>CANTIDAD 2</th>
                   <th style={{textAlign: 'right'}}>Parcial 2</th>
+                  <th style={{textAlign: 'right', background: '#dcfce7', color: '#166534', fontWeight: 'bold'}}>Precio Unit Nuevo</th>
+                  <th style={{textAlign: 'right', background: '#dcfce7', color: '#166534', fontWeight: 'bold'}}>Costo Total Nuevo</th>
                 </tr>
               </thead>
               <tbody>
                 {apuData.map((apu, index) => {
                   const parcial2 = Number(apu.cantidad_2) * Number(apu.metrado_fijo);
+                  const costoTotalNuevo = parcial2 * totals.precioPromedio;
                   const isExpanded = expandedRows.has(apu.id);
                   return (
                     <React.Fragment key={apu.id}>
                       <tr style={{background: isExpanded ? '#f1f5f9' : 'transparent', borderBottom: '1px solid #e2e8f0'}}>
                         <td style={{textAlign: 'center'}}>
-                          <button 
+                          <button
                             onClick={() => toggleRow(apu.id)}
                             style={{background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem'}}
                             title={isExpanded ? "Ocultar APU" : "Ver APU Completo"}
@@ -635,20 +682,35 @@ export default function Home() {
                         <td style={{textAlign: 'right'}}>{Number(apu.cantidad_1).toFixed(6)}</td>
                         <td style={{textAlign: 'right'}}>{Number(apu.metrado_fijo).toFixed(4)}</td>
                         <td style={{textAlign: 'right'}}>{Number(apu.parcial_1).toFixed(4)}</td>
-                        
+
+                        {/* PRECIO UNIT ORIGINAL */}
+                        <td style={{textAlign: 'right', color: '#64748b', fontSize: '0.9rem'}}>
+                          S/ {Number(apu.precio_unit_original).toLocaleString('en-US', {minimumFractionDigits: 4, maximumFractionDigits: 4})}
+                        </td>
+
                         {/* EDITABLE CANTIDAD 2 */}
                         <td className="editable" style={{border: '2px solid #94a3b8'}}>
-                          <input 
-                            type="number" 
+                          <input
+                            type="number"
                             step="0.000001"
                             style={{fontWeight: 'bold', color: '#0f172a'}}
-                            value={apu.cantidad_2} 
+                            value={apu.cantidad_2}
                             onChange={(e) => handleApuEdit(index, 'cantidad_2', parseFloat(e.target.value) || 0)}
                             onBlur={() => autoSaveApu(apu)}
                           />
                         </td>
-                        
+
                         <td style={{textAlign: 'right', fontWeight: 'bold'}}>{parcial2.toFixed(4)}</td>
+
+                        {/* PRECIO UNIT NUEVO (PPP) */}
+                        <td style={{textAlign: 'right', fontWeight: 'bold', background: '#f0fdf4', color: '#166534'}}>
+                          S/ {totals.precioPromedio.toLocaleString('en-US', {minimumFractionDigits: 4, maximumFractionDigits: 4})}
+                        </td>
+
+                        {/* COSTO TOTAL NUEVO */}
+                        <td style={{textAlign: 'right', fontWeight: 'bold', background: '#dcfce7', color: '#166534'}}>
+                          S/ {costoTotalNuevo.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                        </td>
                       </tr>
                       {isExpanded && (
                         <tr>

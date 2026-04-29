@@ -11,12 +11,13 @@ export async function GET(request: Request) {
 
   try {
     const client = await pool.connect();
-    
-    // Fetch APU distribution
+
+    // Fetch APU distribution with price reference
     const query = `
-      SELECT i.id, p.codigo as codigo_partida, i.item_1, i.codigo_insumo, p.descripcion as partida_desc, i.unidad, 
+      SELECT i.id, p.codigo as codigo_partida, i.item_1, i.codigo_insumo, p.descripcion as partida_desc, i.unidad,
              i.incidencia_original as cantidad_1, p.metrado_fijo, i.parcial_original as parcial_1,
-             i.incidencia as cantidad_2, i.cantidad_modificada, i.cantidad_adquirida
+             i.incidencia as cantidad_2, i.cantidad_modificada, i.cantidad_adquirida,
+             COALESCE(i.precio_unit, 0) as precio_unit_original
       FROM insumos i
       JOIN partidas p ON i.codigo_partida = p.codigo
       WHERE i.descripcion = $1
@@ -24,7 +25,7 @@ export async function GET(request: Request) {
     `;
     const result = await client.query(query, [insumo]);
     client.release();
-    
+
     return NextResponse.json(result.rows);
   } catch (error) {
     console.error('Database Error:', error);
