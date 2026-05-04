@@ -12,21 +12,27 @@ export async function GET(request: Request) {
     if (mode === 'insumos') {
       const result = await client.query(`
         SELECT
-          DISTINCT descripcion as nombre,
-          unidad,
-          SUM(incidencia) as meta_cantidad,
-          0 as linked_count,
-          0 as adquirido,
-          0 as es_extra,
-          COUNT(*) as total_registros
-        FROM insumos
-        GROUP BY descripcion, unidad
-        ORDER BY descripcion
+          i.descripcion as nombre,
+          i.unidad,
+          SUM(i.incidencia) as meta_cantidad,
+          COUNT(m.id) as linked_count,
+          COALESCE((
+            SELECT SUM(c.cantidad_und) 
+            FROM mapeo_vinculacion m2 
+            JOIN compras c ON m2.compra_id = c.id 
+            WHERE m2.insumo_nombre = i.descripcion
+          ), 0) as adquirido,
+          MAX(CAST(i.es_extra AS INT)) as es_extra,
+          COUNT(i.id) as total_registros
+        FROM insumos i
+        LEFT JOIN mapeo_vinculacion m ON i.descripcion = m.insumo_nombre
+        GROUP BY i.descripcion, i.unidad
+        ORDER BY i.descripcion
       `);
 
       const unlinkedResult = await client.query(`
         SELECT COUNT(*) as count FROM compras
-        WHERE insumo_descripcion NOT IN (SELECT DISTINCT descripcion FROM insumos)
+        WHERE id NOT IN (SELECT compra_id FROM mapeo_vinculacion)
       `);
 
       client.release();
@@ -38,40 +44,51 @@ export async function GET(request: Request) {
       const metaResult = await client.query(`
         SELECT
           SUM(incidencia) as meta_cantidad,
-          unidad,
-          SUM(cantidad_adquirida) as adquirido
+          unidad
         FROM insumos
         WHERE descripcion = $1
         GROUP BY unidad
       `, [insumo]);
 
-      const comprasResult = await client.query(`
-        SELECT
-          id,
-          tipo_c,
-          anio_c,
-          (COALESCE(origen_compra, '') || '-' || COALESCE(numero_doc, '')) as orden_doc,
-          insumo_descripcion as detalle_compra,
-          unidad,
-          cantidad_und as cantidad,
-          precio_unit as precio,
-          (cantidad_und * precio_unit) as total,
-          insumo_descripcion,
-          observacion,
-          'disponible'::text as estado,
-          NULL::text as vinculado_a
-        FROM compras
-        WHERE LOWER(insumo_descripcion) LIKE LOWER($1)
-        ORDER BY id
+      const adquiridoResult = await client.query(`
+        SELECT SUM(c.cantidad_und) as adquirido
+        FROM mapeo_vinculacion m
+        JOIN compras c ON m.compra_id = c.id
+        WHERE m.insumo_nombre = $1
       `, [insumo]);
 
-      const meta = metaResult.rows[0] || { meta_cantidad: 0, unidad: '', adquirido: 0 };
+      const comprasResult = await client.query(`
+        SELECT
+          c.id,
+          c.tipo_c,
+          c.anio_c,
+          c.orden_doc,
+          c.detalle_compra,
+          c.unidad_und as unidad,
+          c.cantidad_und as cantidad,
+          c.precio_und as precio,
+          (c.cantidad_und * c.precio_und) as total,
+          c.insumo_descripcion,
+          c.observacion,
+          CASE 
+              WHEN m.id IS NOT NULL AND m.insumo_nombre = $1 THEN 'vinculado'
+              WHEN m.id IS NOT NULL AND m.insumo_nombre != $1 THEN 'bloqueado'
+              ELSE 'disponible'
+          END as estado,
+          m.insumo_nombre as vinculado_a
+        FROM compras c
+        LEFT JOIN mapeo_vinculacion m ON c.id = m.compra_id
+        ORDER BY c.id DESC
+      `, [insumo]);
+
+      const meta = metaResult.rows[0] || { meta_cantidad: 0, unidad: '' };
+      const adquirido = adquiridoResult.rows[0]?.adquirido || 0;
 
       client.release();
       return NextResponse.json({
         meta_cantidad: meta.meta_cantidad || 0,
         unidad: meta.unidad || '',
-        adquirido: meta.adquirido || 0,
+        adquirido: adquirido,
         compras: comprasResult.rows
       });
     }
@@ -88,6 +105,7 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     const { insumo_nombre, compra_ids } = body;
+    const usuario = request.headers.get('X-Usuario') || 'Sistema';
 
     if (!insumo_nombre || !Array.isArray(compra_ids)) {
       return NextResponse.json({ error: 'Invalid payload' }, { status: 400 });
@@ -98,10 +116,14 @@ export async function POST(request: Request) {
       await client.query('BEGIN');
 
       for (const compra_id of compra_ids) {
-        await client.query(
-          'UPDATE compras SET observacion = $1 WHERE id = $2',
-          [`Vinculado a: ${insumo_nombre}`, compra_id]
-        );
+        // Verificar si ya está vinculado
+        const check = await client.query('SELECT id FROM mapeo_vinculacion WHERE compra_id = $1', [compra_id]);
+        if (check.rows.length === 0) {
+          await client.query(
+            'INSERT INTO mapeo_vinculacion (insumo_nombre, compra_id, usuario) VALUES ($1, $2, $3)',
+            [insumo_nombre, compra_id, usuario]
+          );
+        }
       }
 
       await client.query('COMMIT');
@@ -123,16 +145,17 @@ export async function DELETE(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const compra_id = searchParams.get('compra_id');
+    const insumo_nombre = searchParams.get('insumo_nombre');
 
-    if (!compra_id) {
-      return NextResponse.json({ error: 'Missing compra_id' }, { status: 400 });
+    if (!compra_id || !insumo_nombre) {
+      return NextResponse.json({ error: 'Missing parameters' }, { status: 400 });
     }
 
     const client = await pool.connect();
     try {
       await client.query(
-        'UPDATE compras SET observacion = NULL WHERE id = $1',
-        [parseInt(compra_id)]
+        'DELETE FROM mapeo_vinculacion WHERE compra_id = $1 AND insumo_nombre = $2',
+        [parseInt(compra_id), insumo_nombre]
       );
     } finally {
       client.release();
