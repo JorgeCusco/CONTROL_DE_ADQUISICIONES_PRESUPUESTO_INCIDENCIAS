@@ -34,23 +34,51 @@ type Apu = {
 };
 
 export default function Home() {
-  const [insumosList, setInsumosList] = useState<{codigo: string, nombre: string, estado?: string, comentario?: string}[]>([]);
+  const [insumosList, setInsumosList] = useState<{ codigo: string, nombre: string, estado?: string, comentario?: string }[]>([]);
   const [unitsList, setUnitsList] = useState<string[]>([]);
   const [selectedInsumo, setSelectedInsumo] = useState<string>('');
   const [selectedInsumoName, setSelectedInsumoName] = useState<string>('');
-  
+
   const [compras, setCompras] = useState<Compra[]>([]);
   const [apuData, setApuData] = useState<Apu[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [notification, setNotification] = useState('');
-  
+
   const [officialName, setOfficialName] = useState<string>('');
   const [globalAdquirido, setGlobalAdquirido] = useState<number>(0);
   const [isMetaLocked, setIsMetaLocked] = useState(true);
   const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
   const [workflowState, setWorkflowState] = useState('Pendiente');
   const [workflowComment, setWorkflowComment] = useState('');
+  const [showBubble, setShowBubble] = useState(false);
+
+  // Dragging states for Help Bubble
+  const [bubblePos, setBubblePos] = useState({ x: 120, y: 315 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+
+  useEffect(() => {
+    if (!isDragging) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      setBubblePos({
+        x: e.clientX - dragStart.x,
+        y: e.clientY - dragStart.y
+      });
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging, dragStart]);
 
   // Search state
   const [searchTerm, setSearchTerm] = useState('');
@@ -84,7 +112,7 @@ export default function Home() {
     else newExpanded.add(id);
     setExpandedRows(newExpanded);
   };
-  
+
   // Available names: APU name + any distinct names from the purchases
   const availableNames = useMemo(() => {
     if (!selectedInsumoName) return [];
@@ -116,20 +144,20 @@ export default function Home() {
       return;
     }
     setLoading(true);
-    
+
     const insumoData = insumosList.find(i => i.codigo === selectedInsumo);
     if (insumoData) {
       setWorkflowState(insumoData.estado || 'Pendiente');
       setWorkflowComment(insumoData.comentario || '');
     }
-    
+
     fetch(`/api/compras?insumo=${encodeURIComponent(selectedInsumo)}`)
       .then(res => res.json())
       .then(data => {
         setCompras(data);
         setOfficialName(selectedInsumoName); // Reset official name to current selected
       });
-      
+
     fetch(`/api/apu?insumo=${encodeURIComponent(selectedInsumo)}`)
       .then(res => res.json())
       .then(data => {
@@ -142,14 +170,14 @@ export default function Home() {
   const handleEdit = (index: number, field: keyof Compra, value: string | number) => {
     const updated = [...compras];
     updated[index] = { ...updated[index], [field]: value };
-    
+
     // If we edit the unit of the FIRST row, propagate it to ALL other rows
     if (index === 0 && field === 'unidad') {
       for (let i = 1; i < updated.length; i++) {
         updated[i].unidad = value as string;
       }
     }
-    
+
     setCompras(updated);
   };
 
@@ -163,7 +191,7 @@ export default function Home() {
   const totals = useMemo(() => {
     let totalAdquirido = 0;
     let sumaImporte = 0;
-    
+
     compras.forEach(c => {
       const cant = Number(c.cantidad_und) || 0;
       const pu = Number(c.precio_unit) || 0;
@@ -179,6 +207,11 @@ export default function Home() {
   const sumAdquiridoValido = useMemo(() => {
     return compras.reduce((acc, curr) => acc + Number(curr.cantidad_und), 0);
   }, [compras]);
+
+  const { sumParcial2, diff2 } = useMemo(() => {
+    const sum = apuData.reduce((acc, curr) => acc + (Number(curr.cantidad_2) * Number(curr.metrado_fijo)), 0);
+    return { sumParcial2: sum, diff2: globalAdquirido - sum };
+  }, [apuData, globalAdquirido]);
 
   // Sync Global Goal with Purchases Total when locked
   useEffect(() => {
@@ -196,7 +229,7 @@ export default function Home() {
         cantidad_adquirida: globalAdquirido,
         cantidad_modificada: Number(apu.cantidad_2) * Number(apu.metrado_fijo)
       };
-      
+
       const res = await fetch('/api/apu', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -209,7 +242,7 @@ export default function Home() {
       } else {
         setNotification('❌ Error al auto-guardar APU.');
       }
-    } catch(e) {
+    } catch (e) {
       setNotification('❌ Error de conexión al auto-guardar.');
     }
   };
@@ -224,18 +257,18 @@ export default function Home() {
         cantidad_adquirida: globalAdquirido,
         cantidad_modificada: Number(a.cantidad_2) * Number(a.metrado_fijo)
       }));
-      
+
       const res = await fetch('/api/apu', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ updates: updatesApu })
       });
-      
+
       if (res.ok) {
         setNotification('✅ Meta Global guardada en todas las partidas.');
         setTimeout(() => setNotification(''), 2000);
       }
-    } catch(e) {
+    } catch (e) {
       setNotification('❌ Error de conexión al guardar Meta Global.');
     }
   };
@@ -245,17 +278,17 @@ export default function Home() {
       const res = await fetch('/api/compras', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           updates: [{
             id: compra.id,
             unidad: compra.unidad,
             cantidad_und: Number(compra.cantidad_und),
             precio_unit: Number(compra.precio_unit)
-          }] 
+          }]
         })
       });
       if (!res.ok) setNotification('❌ Error al auto-guardar compra.');
-    } catch(e) {
+    } catch (e) {
       setNotification('❌ Error de conexión al auto-guardar.');
     }
   };
@@ -276,9 +309,9 @@ export default function Home() {
         setNotification('✅ Estado guardado exitosamente.');
         setTimeout(() => setNotification(''), 3000);
         // Refresh local list state
-        setInsumosList(prev => prev.map(i => i.codigo === selectedInsumo ? {...i, estado: workflowState, comentario: workflowComment} : i));
+        setInsumosList(prev => prev.map(i => i.codigo === selectedInsumo ? { ...i, estado: workflowState, comentario: workflowComment } : i));
       }
-    } catch(e) {
+    } catch (e) {
       setNotification('❌ Error al guardar estado.');
     } finally {
       setSaving(false);
@@ -288,28 +321,28 @@ export default function Home() {
   return (
     <main className="container">
       <h1>⚖️ Ajuste Manual y Cuadre de Adquisiciones</h1>
-      
+
       <div className="card">
-        <div className="selector-group" style={{position: 'relative'}}>
+        <div className="selector-group" style={{ position: 'relative' }}>
           <label htmlFor="insumo-search"><strong>1. Busque y Seleccione el Insumo (Búsqueda Booleana):</strong></label>
-          <div style={{display: 'flex', gap: '0.5rem'}}>
-            <input 
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <input
               id="insumo-search"
-              type="text" 
+              type="text"
               placeholder="Ej: CEMENTO PORTLAND (Busca ambos términos)"
-              value={searchTerm || selectedInsumoName} 
+              value={searchTerm || selectedInsumoName}
               onChange={(e) => {
                 setSearchTerm(e.target.value);
                 if (selectedInsumoName) setSelectedInsumoName('');
                 setShowDropdown(true);
               }}
               onFocus={() => setShowDropdown(true)}
-              style={{flex: 1, padding: '0.75rem', borderRadius: '4px', border: '2px solid var(--primary)'}}
+              style={{ flex: 1, padding: '0.75rem', borderRadius: '4px', border: '2px solid var(--primary)' }}
             />
             {selectedInsumo && (
-              <button 
-                className="btn" 
-                style={{background: '#64748b'}}
+              <button
+                className="btn"
+                style={{ background: '#64748b' }}
                 onClick={() => {
                   setSelectedInsumo('');
                   setSelectedInsumoName('');
@@ -336,8 +369,8 @@ export default function Home() {
               borderRadius: '0 0 8px 8px'
             }}>
               {filteredInsumos.map((ins, i) => (
-                <div 
-                  key={`${ins.codigo}-${i}`} 
+                <div
+                  key={`${ins.codigo}-${i}`}
                   onClick={() => {
                     setSelectedInsumo(ins.codigo);
                     setSelectedInsumoName(ins.nombre);
@@ -355,7 +388,7 @@ export default function Home() {
                   onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
                   onMouseLeave={(e) => e.currentTarget.style.background = selectedInsumo === ins.codigo ? '#eff6ff' : 'white'}
                 >
-                  <span style={{fontSize: '0.8rem', color: '#64748b', marginRight: '0.5rem'}}>{ins.codigo}</span>
+                  <span style={{ fontSize: '0.8rem', color: '#64748b', marginRight: '0.5rem' }}>{ins.codigo}</span>
                   {ins.nombre}
                 </div>
               ))}
@@ -377,14 +410,14 @@ export default function Home() {
           <div className="header-row">
             <h2>🛒 Cuadre Manual de Compras (Unificar Unidades)</h2>
           </div>
-          
-          <p style={{color: '#666', marginBottom: '1rem'}}>
+
+          <p style={{ color: '#666', marginBottom: '1rem' }}>
             Edita la <strong>Unidad</strong> y la <strong>Cantidad_Und</strong> para unificar y cuadrar las compras.
           </p>
 
-          <div style={{marginBottom: '1.5rem', padding: '1rem', background: '#f8fafc', borderLeft: '4px solid var(--primary)'}}>
-            <label htmlFor="official-name" style={{fontWeight: 'bold', display: 'block', marginBottom: '0.5rem'}}>✏️ Definir Nombre Oficial del Insumo:</label>
-            <select 
+          <div style={{ marginBottom: '1.5rem', padding: '1rem', background: '#f8fafc', borderLeft: '4px solid var(--primary)' }}>
+            <label htmlFor="official-name" style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.5rem' }}>✏️ Definir Nombre Oficial del Insumo:</label>
+            <select
               id="official-name"
               value={officialName}
               onChange={(e) => {
@@ -399,7 +432,7 @@ export default function Home() {
                   setTimeout(() => setNotification(''), 2000);
                 });
               }}
-              style={{width: '100%', maxWidth: '600px'}}
+              style={{ width: '100%', maxWidth: '600px' }}
             >
               {availableNames.map((name, i) => (
                 <option key={i} value={name}>{name} {name === selectedInsumoName ? '(Actual en APU)' : '(De Compra)'}</option>
@@ -441,46 +474,46 @@ export default function Home() {
           ) : compras.length === 0 ? (
             <p>No se encontraron compras para este insumo.</p>
           ) : (
-            <div style={{overflowX: 'auto'}}>
+            <div style={{ overflowX: 'auto' }}>
               <table className="data-table">
                 <thead>
                   <tr>
                     <th>Orden/Doc</th>
                     <th>Detalle</th>
                     <th>Unidad Orig.</th>
-                    <th style={{textAlign: 'right'}}>Cant. Orig.</th>
-                    <th style={{textAlign: 'right'}}>Precio Orig.</th>
+                    <th style={{ textAlign: 'right' }}>Cant. Orig.</th>
+                    <th style={{ textAlign: 'right' }}>Precio Orig.</th>
                     <th>Unidad (Editable)</th>
-                    <th style={{textAlign: 'right'}}>Cantidad_Und (Editable)</th>
-                    <th style={{textAlign: 'right'}}>Precio Unit.</th>
-                    <th style={{textAlign: 'right'}}>Total</th>
+                    <th style={{ textAlign: 'right' }}>Cantidad_Und (Editable)</th>
+                    <th style={{ textAlign: 'right' }}>Precio Unit.</th>
+                    <th style={{ textAlign: 'right' }}>Total</th>
                   </tr>
                 </thead>
                 <tbody>
                   {compras.map((compra, index) => {
                     const isMismatch = compra.unidad !== compra.unidad_orig;
-                    
+
                     return (
                       <tr key={compra.id} style={{
                         background: isMismatch ? '#fff7ed' : 'transparent',
                         borderLeft: isMismatch ? '4px solid #f97316' : 'none'
                       }}>
                         <td>{compra.orden}</td>
-                        <td style={{maxWidth: '200px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}} title={compra.detalle}>
+                        <td style={{ maxWidth: '200px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={compra.detalle}>
                           {compra.detalle}
                         </td>
                         <td>
                           {compra.unidad_orig}
                         </td>
-                        <td style={{textAlign: 'right'}}>{Number(compra.cant_orig).toFixed(4)}</td>
-                        <td style={{textAlign: 'right', color: '#64748b', fontSize: '0.9rem'}}>
+                        <td style={{ textAlign: 'right' }}>{Number(compra.cant_orig).toFixed(4)}</td>
+                        <td style={{ textAlign: 'right', color: '#64748b', fontSize: '0.9rem' }}>
                           S/ {Number(compra.precio_orig).toFixed(2)}
                         </td>
 
                         {/* EDITABLE UNIT */}
-                        <td className="editable" style={{display: 'flex', alignItems: 'center', gap: '0.5rem', border: 'none', background: 'transparent'}}>
-                          <select 
-                            value={compra.unidad} 
+                        <td className="editable" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', border: 'none', background: 'transparent' }}>
+                          <select
+                            value={compra.unidad}
                             onChange={(e) => handleEdit(index, 'unidad', e.target.value)}
                             onBlur={() => autoSaveCompra(compra)}
                             style={{
@@ -494,18 +527,18 @@ export default function Home() {
                             ))}
                           </select>
                           {isMismatch && (
-                            <span style={{color: '#c2410c', fontSize: '0.85rem', fontWeight: 'bold'}}>
+                            <span style={{ color: '#c2410c', fontSize: '0.85rem', fontWeight: 'bold' }}>
                               ⚠️ <del>{compra.unidad_orig}</del>
                             </span>
                           )}
                         </td>
-                        
+
                         {/* EDITABLE QUANTITY */}
                         <td className="editable">
-                          <input 
-                            type="number" 
+                          <input
+                            type="number"
                             step="0.0001"
-                            value={compra.cantidad_und} 
+                            value={compra.cantidad_und}
                             onChange={(e) => handleEdit(index, 'cantidad_und', parseFloat(e.target.value) || 0)}
                             onBlur={() => autoSaveCompra(compra)}
                             disabled={!isMismatch}
@@ -515,13 +548,13 @@ export default function Home() {
                             }}
                           />
                         </td>
-                        
+
                         {/* EDITABLE PRICE UNIT (NEW) */}
                         <td className="editable">
-                          <input 
-                            type="number" 
+                          <input
+                            type="number"
                             step="0.0001"
-                            value={compra.precio_unit} 
+                            value={compra.precio_unit}
                             onChange={(e) => handleEdit(index, 'precio_unit', parseFloat(e.target.value) || 0)}
                             onBlur={() => autoSaveCompra(compra)}
                             style={{
@@ -533,8 +566,8 @@ export default function Home() {
                           />
                         </td>
 
-                        <td style={{textAlign: 'right', fontWeight: 'bold'}}>
-                          {(Number(compra.cantidad_und) * Number(compra.precio_unit)).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                        <td style={{ textAlign: 'right', fontWeight: 'bold' }}>
+                          {(Number(compra.cantidad_und) * Number(compra.precio_unit)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </td>
                       </tr>
                     );
@@ -547,51 +580,51 @@ export default function Home() {
           <div className="metrics">
             <div className="metric-card" style={{ background: '#fefce8', border: '2px solid #facc15', boxShadow: '0 4px 6px -1px rgba(234, 179, 8, 0.15)' }}>
               <div className="metric-label" style={{ color: '#854d0e', fontWeight: 'bold' }}>Total Adquirido Válido</div>
-              <div className="metric-value" style={{ color: '#713f12' }}>{totals.totalAdquirido.toLocaleString('en-US', {minimumFractionDigits: 4, maximumFractionDigits: 4})}</div>
+              <div className="metric-value" style={{ color: '#713f12' }}>{totals.totalAdquirido.toLocaleString('en-US', { minimumFractionDigits: 4, maximumFractionDigits: 4 })}</div>
             </div>
             <div className="metric-card" style={{ opacity: 0.6 }}>
               <div className="metric-label">Suma Total (Costo)</div>
-              <div className="metric-value">S/ {totals.sumaImporte.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+              <div className="metric-value">S/ {totals.sumaImporte.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
             </div>
             <div className="metric-card" style={{ background: '#fefce8', border: '2px solid #facc15', boxShadow: '0 4px 6px -1px rgba(234, 179, 8, 0.15)' }}>
               <div className="metric-label" style={{ color: '#854d0e', fontWeight: 'bold' }}>Precio Promedio Ponderado</div>
-              <div className="metric-value" style={{ color: '#713f12' }}>S/ {totals.precioPromedio.toLocaleString('en-US', {minimumFractionDigits: 4, maximumFractionDigits: 4})}</div>
+              <div className="metric-value" style={{ color: '#713f12' }}>S/ {totals.precioPromedio.toLocaleString('en-US', { minimumFractionDigits: 4, maximumFractionDigits: 4 })}</div>
             </div>
           </div>
-          <h2 style={{marginTop: '1.5rem', marginBottom: '0.5rem'}}>📊 3. Edición de Incidencias (APU 2)</h2>
+          <h2 style={{ marginTop: '1.5rem', marginBottom: '0.5rem' }}>📊 3. Edición de Incidencias (APU 2)</h2>
 
-          <div style={{marginBottom: '0.75rem', padding: '0.75rem 1rem', background: '#dcfce7', borderLeft: '4px solid #16a34a', borderRadius: '4px', border: '2px solid #22c55e'}}>
-            <div style={{display: 'flex', alignItems: 'center', gap: '1rem'}}>
+          <div style={{ marginBottom: '0.75rem', padding: '0.75rem 1rem', background: '#dcfce7', borderLeft: '4px solid #16a34a', borderRadius: '4px', border: '2px solid #22c55e' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
               <div>
-                <div style={{fontSize: '0.85rem', color: '#15803d', fontWeight: '600', marginBottom: '0.15rem'}}>✨ Precio Promedio Ponderado (PPP)</div>
-                <div style={{fontSize: '1.4rem', fontWeight: 'bold', color: '#166534'}}>S/ {totals.precioPromedio.toLocaleString('en-US', {minimumFractionDigits: 4, maximumFractionDigits: 4})}</div>
+                <div style={{ fontSize: '0.85rem', color: '#15803d', fontWeight: '600', marginBottom: '0.15rem' }}>✨ Precio Promedio Ponderado (PPP)</div>
+                <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: '#166534' }}>S/ {totals.precioPromedio.toLocaleString('en-US', { minimumFractionDigits: 4, maximumFractionDigits: 4 })}</div>
               </div>
-              <div style={{fontSize: '0.8rem', color: '#15803d', fontStyle: 'italic', flex: 1}}>
+              <div style={{ fontSize: '0.8rem', color: '#15803d', fontStyle: 'italic', flex: 1 }}>
                 Este es el precio unitario que se usará en el APU Nuevo Modificado para todos los APU de este insumo.
               </div>
             </div>
           </div>
 
-          <div style={{marginBottom: '0.75rem', padding: '0.75rem 1rem', background: '#eef2ff', borderLeft: '4px solid #4f46e5', borderRadius: '4px'}}>
-            <label htmlFor="global-adquirido" style={{fontWeight: 'bold', display: 'block', marginBottom: '0.5rem', color: '#312e81'}}>
+          <div style={{ marginBottom: '0.75rem', padding: '0.75rem 1rem', background: '#eef2ff', borderLeft: '4px solid #4f46e5', borderRadius: '4px' }}>
+            <label htmlFor="global-adquirido" style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.5rem', color: '#312e81' }}>
               🎯 Meta de Cuadre Global (Total Adquirido Válido a Cuadrar):
             </label>
-            <div style={{display: 'flex', alignItems: 'center', gap: '1rem'}}>
-              <div style={{position: 'relative', flex: 1, maxWidth: '300px'}}>
-                <input 
-                  type="number" 
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              <div style={{ position: 'relative', flex: 1, maxWidth: '300px' }}>
+                <input
+                  type="number"
                   step="0.0001"
                   className="meta-input"
-                  value={globalAdquirido} 
+                  value={globalAdquirido}
                   onChange={(e) => setGlobalAdquirido(parseFloat(e.target.value) || 0)}
                   onBlur={autoSaveGlobalMeta}
                   disabled={isMetaLocked}
                   style={{
                     width: '100%',
-                    padding: '0.5rem', 
+                    padding: '0.5rem',
                     fontSize: '1.1rem',
                     fontWeight: 'bold',
-                    borderRadius: '6px', 
+                    borderRadius: '6px',
                     border: isMetaLocked ? '2px solid #e2e8f0' : '2px solid var(--primary)',
                     background: isMetaLocked ? '#f1f5f9' : 'white',
                     color: isMetaLocked ? '#64748b' : '#1e293b',
@@ -600,13 +633,13 @@ export default function Home() {
                   }}
                 />
                 {isMetaLocked && (
-                  <div style={{position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8'}}>
+                  <div style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }}>
                     🔒
                   </div>
                 )}
               </div>
 
-              <button 
+              <button
                 onClick={() => {
                   if (isMetaLocked) {
                     const pass = prompt('🔑 Ingrese la clave para desbloquear la Meta Global:');
@@ -631,33 +664,121 @@ export default function Home() {
                 {isMetaLocked ? '🔓 Desbloquear para Editar' : '🔒 Bloquear Campo'}
               </button>
 
-              <span style={{fontSize: '0.9rem', color: '#64748b', fontStyle: 'italic'}}>
+              <span style={{ fontSize: '0.9rem', color: '#64748b', fontStyle: 'italic' }}>
                 Este es el total neto que se comparará contra la suma de tus Parciales 2.
               </span>
             </div>
           </div>
 
-          <p style={{color: '#666', marginBottom: '0.5rem', fontSize: '0.9rem'}}>
-            Edite la <strong>CANTIDAD 2 (Incidencia)</strong> en cada partida para que la suma final cuadre con la Meta Global.
-          </p>
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '0.5rem' }}>
+            <p style={{ color: '#666', margin: 0, fontSize: '0.9rem' }}>
+              Edite la <strong>CANTIDAD 2 (Incidencia)</strong> en cada partida para que la suma final cuadre con la Meta Global.
+            </p>
+            <button
+              onClick={() => setShowBubble(!showBubble)}
+              style={{ borderRadius: '50%', background: showBubble ? '#1e40af' : '#dbeafe', color: showBubble ? 'white' : '#1e40af', border: 'none', width: '22px', height: '22px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}
+              title="Ver estado de cuadre"
+            >
+              ?
+            </button>
+            {showBubble && (
+              <div style={{
+                position: 'fixed',
+                top: `${bubblePos.y}px`,
+                left: `${bubblePos.x}px`,
+                background: 'white',
+                border: '1px solid #cbd5e1',
+                boxShadow: '0 10px 25px -5px rgba(0,0,0,0.15)',
+                padding: '0.8rem',
+                borderRadius: '8px',
+                width: '180px',
+                zIndex: 9999,
+                userSelect: isDragging ? 'none' : 'auto'
+              }}>
+                <div
+                  onMouseDown={(e) => {
+                    setIsDragging(true);
+                    setDragStart({
+                      x: e.clientX - bubblePos.x,
+                      y: e.clientY - bubblePos.y
+                    });
+                  }}
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: '8px',
+                    cursor: isDragging ? 'grabbing' : 'grab',
+                    borderBottom: '1px solid #e2e8f0',
+                    paddingBottom: '4px',
+                    userSelect: 'none'
+                  }}
+                  title="Arrastra para mover"
+                >
+                  <h4 style={{ margin: 0, color: '#1e293b', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <span>⣿</span> 📊 Cuadre
+                  </h4>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation(); // Prevent drag activation when clicking close button
+                      setShowBubble(false);
+                    }}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: '1.2rem', padding: '0', lineHeight: 1 }}
+                  >
+                    ×
+                  </button>
+                </div>
 
-          <div style={{width: '100%', overflowX: 'hidden'}}>
-            <table className="data-table" style={{fontSize: '0.8rem'}}>
+                <div style={{ display: 'flex', flexDirection: 'column', marginBottom: '6px', borderBottom: '1px solid #f1f5f9', paddingBottom: '4px' }}>
+                  <span style={{ fontSize: '0.7rem', color: '#64748b', marginBottom: '2px' }}>Meta Global:</span>
+                  <strong style={{ fontSize: '0.85rem', color: '#1e293b' }}>{globalAdquirido.toLocaleString('en-US', { minimumFractionDigits: 4, maximumFractionDigits: 4 })}</strong>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', marginBottom: '10px' }}>
+                  <span style={{ fontSize: '0.7rem', color: '#64748b', marginBottom: '2px' }}>Suma APU:</span>
+                  <strong style={{ fontSize: '0.85rem', color: '#1e293b' }}>{sumParcial2.toLocaleString('en-US', { minimumFractionDigits: 4, maximumFractionDigits: 4 })}</strong>
+                </div>
+
+                <div style={{
+                  fontSize: '0.75rem',
+                  fontWeight: '600',
+                  color: Math.abs(diff2) < 0.0001 ? '#166534' : '#991b1b',
+                  padding: '0.5rem',
+                  background: Math.abs(diff2) < 0.0001 ? '#dcfce7' : '#fee2e2',
+                  borderRadius: '6px',
+                  border: `1px solid ${Math.abs(diff2) < 0.0001 ? '#bbf7d0' : '#fecaca'}`,
+                  textAlign: 'center',
+                  lineHeight: '1.2'
+                }}>
+                  {Math.abs(diff2) < 0.0001 ? (
+                    '✅ Cuadre Exacto'
+                  ) : diff2 > 0 ? (
+                    `⚠️ Falta: ${diff2.toFixed(4)}\n(Aumentar incidencia)`
+                  ) : (
+                    `⚠️ Exceso: ${Math.abs(diff2).toFixed(4)}\n(Reducir incidencia)`
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div style={{ width: '100%', overflowX: 'hidden' }}>
+            <table className="data-table" style={{ fontSize: '0.8rem' }}>
               <thead>
                 <tr>
-                  <th style={{width: '30px', padding: '0.5rem'}}></th>
-                  <th style={{whiteSpace: 'nowrap', padding: '0.5rem'}}>Item 1</th>
-                  <th style={{whiteSpace: 'nowrap', padding: '0.5rem'}}>Código 1</th>
-                  <th style={{padding: '0.5rem'}}>Descripción Partida</th>
-                  <th style={{whiteSpace: 'nowrap', padding: '0.5rem'}}>Unid.</th>
-                  <th style={{textAlign: 'right', whiteSpace: 'nowrap', padding: '0.5rem'}}>Cantidad 1</th>
-                  <th style={{textAlign: 'right', whiteSpace: 'nowrap', padding: '0.5rem'}}>Metrado Fijo</th>
-                  <th style={{textAlign: 'right', whiteSpace: 'nowrap', padding: '0.5rem'}}>Parcial 1</th>
-                  <th style={{textAlign: 'right', color: '#64748b', padding: '0.5rem'}}>Precio Unit Orig.</th>
-                  <th style={{textAlign: 'right', background: '#e2e8f0', color: '#1e293b', padding: '0.5rem', width: '100px'}}>CANTIDAD 2 (INCIDENCIA)</th>
-                  <th style={{textAlign: 'right', whiteSpace: 'nowrap', padding: '0.5rem'}}>Parcial 2</th>
-                  <th style={{textAlign: 'right', background: '#dcfce7', color: '#166534', fontWeight: 'bold', padding: '0.5rem'}}>Precio Unit Nuevo</th>
-                  <th style={{textAlign: 'right', background: '#dcfce7', color: '#166534', fontWeight: 'bold', padding: '0.5rem'}}>Costo Total Nuevo</th>
+                  <th style={{ width: '30px', padding: '0.5rem' }}></th>
+                  <th style={{ whiteSpace: 'nowrap', padding: '0.5rem' }}>Item 1</th>
+                  <th style={{ whiteSpace: 'nowrap', padding: '0.5rem' }}>Código 1</th>
+                  <th style={{ padding: '0.5rem' }}>Descripción Partida</th>
+                  <th style={{ whiteSpace: 'nowrap', padding: '0.5rem' }}>Unid.</th>
+                  <th style={{ textAlign: 'right', whiteSpace: 'nowrap', padding: '0.5rem' }}>Cantidad 1</th>
+                  <th style={{ textAlign: 'right', whiteSpace: 'nowrap', padding: '0.5rem' }}>Metrado Fijo</th>
+                  <th style={{ textAlign: 'right', whiteSpace: 'nowrap', padding: '0.5rem' }}>Parcial 1</th>
+                  <th style={{ textAlign: 'right', color: '#64748b', padding: '0.5rem' }}>Precio Unit Orig.</th>
+                  <th style={{ textAlign: 'right', background: '#e2e8f0', color: '#1e293b', padding: '0.5rem', width: '100px' }}>CANTIDAD 2 (INCIDENCIA)</th>
+                  <th style={{ textAlign: 'right', whiteSpace: 'nowrap', padding: '0.5rem' }}>Parcial 2</th>
+                  <th style={{ textAlign: 'right', background: '#dcfce7', color: '#166534', fontWeight: 'bold', padding: '0.5rem' }}>Precio Unit Nuevo</th>
+                  <th style={{ textAlign: 'right', background: '#dcfce7', color: '#166534', fontWeight: 'bold', padding: '0.5rem' }}>Costo Total Nuevo</th>
                 </tr>
               </thead>
               <tbody>
@@ -667,60 +788,60 @@ export default function Home() {
                   const isExpanded = expandedRows.has(apu.id);
                   return (
                     <React.Fragment key={apu.id}>
-                      <tr style={{background: isExpanded ? '#f1f5f9' : 'transparent', borderBottom: '1px solid #e2e8f0'}}>
-                        <td style={{textAlign: 'center', padding: '0.5rem'}}>
+                      <tr style={{ background: isExpanded ? '#f1f5f9' : 'transparent', borderBottom: '1px solid #e2e8f0' }}>
+                        <td style={{ textAlign: 'center', padding: '0.5rem' }}>
                           <button
                             onClick={() => toggleRow(apu.id)}
-                            style={{background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem'}}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem' }}
                             title={isExpanded ? "Ocultar APU" : "Ver APU Completo"}
                           >
                             {isExpanded ? '🔽' : '▶️'}
                           </button>
                         </td>
-                        <td style={{padding: '0.5rem'}}>{apu.item_1}</td>
-                        <td style={{padding: '0.5rem'}}>{apu.codigo_insumo}</td>
-                        <td style={{maxWidth: '150px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', padding: '0.5rem'}} title={apu.partida_desc}>
+                        <td style={{ padding: '0.5rem' }}>{apu.item_1}</td>
+                        <td style={{ padding: '0.5rem' }}>{apu.codigo_insumo}</td>
+                        <td style={{ maxWidth: '150px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', padding: '0.5rem' }} title={apu.partida_desc}>
                           {apu.codigo_partida} - {apu.partida_desc}
                         </td>
-                        <td style={{padding: '0.5rem'}}>{apu.unidad}</td>
-                        <td style={{textAlign: 'right', padding: '0.5rem'}}>{Number(apu.cantidad_1).toFixed(6)}</td>
-                        <td style={{textAlign: 'right', padding: '0.5rem'}}>{Number(apu.metrado_fijo).toFixed(4)}</td>
-                        <td style={{textAlign: 'right', padding: '0.5rem'}}>{Number(apu.parcial_1).toFixed(4)}</td>
+                        <td style={{ padding: '0.5rem' }}>{apu.unidad}</td>
+                        <td style={{ textAlign: 'right', padding: '0.5rem' }}>{Number(apu.cantidad_1).toFixed(6)}</td>
+                        <td style={{ textAlign: 'right', padding: '0.5rem' }}>{Number(apu.metrado_fijo).toFixed(4)}</td>
+                        <td style={{ textAlign: 'right', padding: '0.5rem' }}>{Number(apu.parcial_1).toFixed(4)}</td>
 
                         {/* PRECIO UNIT ORIGINAL */}
-                        <td style={{textAlign: 'right', color: '#64748b', fontSize: '0.8rem', padding: '0.5rem'}}>
-                          S/ {Number(apu.precio_unit_original).toLocaleString('en-US', {minimumFractionDigits: 4, maximumFractionDigits: 4})}
+                        <td style={{ textAlign: 'right', color: '#64748b', fontSize: '0.8rem', padding: '0.5rem' }}>
+                          S/ {Number(apu.precio_unit_original).toLocaleString('en-US', { minimumFractionDigits: 4, maximumFractionDigits: 4 })}
                         </td>
 
                         {/* EDITABLE CANTIDAD 2 */}
-                        <td className="editable" style={{border: '2px solid #94a3b8', padding: '0'}}>
+                        <td className="editable" style={{ border: '2px solid #94a3b8', padding: '0' }}>
                           <input
                             type="number"
                             step="0.000001"
-                            style={{fontWeight: 'bold', color: '#0f172a', width: '90px', textAlign: 'right', fontSize: '0.8rem', padding: '0.25rem'}}
+                            style={{ fontWeight: 'bold', color: '#0f172a', width: '90px', textAlign: 'right', fontSize: '0.8rem', padding: '0.25rem' }}
                             value={apu.cantidad_2}
                             onChange={(e) => handleApuEdit(index, 'cantidad_2', parseFloat(e.target.value) || 0)}
                             onBlur={() => autoSaveApu(apu)}
                           />
                         </td>
 
-                        <td style={{textAlign: 'right', fontWeight: 'bold', padding: '0.5rem'}}>{parcial2.toFixed(4)}</td>
+                        <td style={{ textAlign: 'right', fontWeight: 'bold', padding: '0.5rem' }}>{parcial2.toFixed(4)}</td>
 
                         {/* PRECIO UNIT NUEVO (PPP) */}
-                        <td style={{textAlign: 'right', fontWeight: 'bold', background: '#f0fdf4', color: '#166534', padding: '0.5rem'}}>
-                          S/ {totals.precioPromedio.toLocaleString('en-US', {minimumFractionDigits: 4, maximumFractionDigits: 4})}
+                        <td style={{ textAlign: 'right', fontWeight: 'bold', background: '#f0fdf4', color: '#166534', padding: '0.5rem' }}>
+                          S/ {totals.precioPromedio.toLocaleString('en-US', { minimumFractionDigits: 4, maximumFractionDigits: 4 })}
                         </td>
 
                         {/* COSTO TOTAL NUEVO */}
-                        <td style={{textAlign: 'right', fontWeight: 'bold', background: '#dcfce7', color: '#166534', padding: '0.5rem'}}>
-                          S/ {costoTotalNuevo.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                        <td style={{ textAlign: 'right', fontWeight: 'bold', background: '#dcfce7', color: '#166534', padding: '0.5rem' }}>
+                          S/ {costoTotalNuevo.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </td>
                       </tr>
                       {isExpanded && (
                         <tr>
-                          <td colSpan={13} style={{padding: '0 1rem 1rem 1rem', background: '#f8fafc', borderBottom: '2px solid #cbd5e1'}}>
-                            <ApuComparative 
-                              codigoPartida={apu.codigo_partida} 
+                          <td colSpan={13} style={{ padding: '0 1rem 1rem 1rem', background: '#f8fafc', borderBottom: '2px solid #cbd5e1' }}>
+                            <ApuComparative
+                              codigoPartida={apu.codigo_partida}
                               selectedInsumoName={selectedInsumoName}
                               modifiedIncidencia={Number(apu.cantidad_2)}
                               ppp={totals.precioPromedio}
@@ -736,24 +857,21 @@ export default function Home() {
               </tbody>
             </table>
           </div>
-          
+
           {(() => {
-            const sumParcial2 = apuData.reduce((acc, curr) => acc + (Number(curr.cantidad_2) * Number(curr.metrado_fijo)), 0);
-            const diff2 = globalAdquirido - sumParcial2;
-            
             return (
               <div className="metrics">
                 <div className="metric-card">
                   <div className="metric-label">Meta Global (A Cuadrar)</div>
-                  <div className="metric-value">{globalAdquirido.toLocaleString('en-US', {minimumFractionDigits: 4, maximumFractionDigits: 4})}</div>
+                  <div className="metric-value">{globalAdquirido.toLocaleString('en-US', { minimumFractionDigits: 4, maximumFractionDigits: 4 })}</div>
                 </div>
                 <div className="metric-card">
                   <div className="metric-label">Suma Parcial 2 (APU)</div>
-                  <div className="metric-value">{sumParcial2.toLocaleString('en-US', {minimumFractionDigits: 4, maximumFractionDigits: 4})}</div>
+                  <div className="metric-value">{sumParcial2.toLocaleString('en-US', { minimumFractionDigits: 4, maximumFractionDigits: 4 })}</div>
                   <div style={{
-                    fontSize: '0.9rem', 
+                    fontSize: '0.9rem',
                     fontWeight: '600',
-                    color: Math.abs(diff2) < 0.0001 ? '#16a34a' : '#dc2626', 
+                    color: Math.abs(diff2) < 0.0001 ? '#16a34a' : '#dc2626',
                     marginTop: '0.75rem',
                     padding: '0.5rem',
                     background: Math.abs(diff2) < 0.0001 ? '#f0fdf4' : '#fef2f2',
@@ -774,12 +892,12 @@ export default function Home() {
             );
           })()}
           {/* WORKFLOW STATE PANEL */}
-          <div style={{marginTop: '2rem', padding: '1.5rem', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', display: 'flex', gap: '2rem', flexWrap: 'wrap'}}>
-            <div style={{flex: '1', minWidth: '300px'}}>
-              <h3 style={{marginBottom: '1rem', color: '#1e293b'}}>🚦 Cierre de Flujo de Cuadre</h3>
-              <div style={{marginBottom: '1rem'}}>
-                <label style={{display: 'block', fontWeight: 'bold', marginBottom: '0.5rem', color: '#475569'}}>Estado Actual del Insumo:</label>
-                <select 
+          <div style={{ marginTop: '2rem', padding: '1.5rem', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', display: 'flex', gap: '2rem', flexWrap: 'wrap' }}>
+            <div style={{ flex: '1', minWidth: '300px' }}>
+              <h3 style={{ marginBottom: '1rem', color: '#1e293b' }}>🚦 Cierre de Flujo de Cuadre</h3>
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '0.5rem', color: '#475569' }}>Estado Actual del Insumo:</label>
+                <select
                   value={workflowState}
                   onChange={e => setWorkflowState(e.target.value)}
                   style={{
@@ -794,23 +912,23 @@ export default function Home() {
                   <option value="Terminado">🟢 Terminado / Cuadrado</option>
                 </select>
               </div>
-              <button 
+              <button
                 onClick={saveWorkflowState}
                 disabled={saving}
                 className="btn btn-success"
-                style={{width: '100%', fontSize: '1.1rem', padding: '0.75rem'}}
+                style={{ width: '100%', fontSize: '1.1rem', padding: '0.75rem' }}
               >
                 {saving ? 'Guardando...' : '✅ Guardar y Sellar Estado'}
               </button>
             </div>
-            
-            <div style={{flex: '2', minWidth: '300px'}}>
-              <label style={{display: 'block', fontWeight: 'bold', marginBottom: '0.5rem', color: '#475569'}}>📝 Nota de Justificación (Para Status Gerencial):</label>
-              <textarea 
+
+            <div style={{ flex: '2', minWidth: '300px' }}>
+              <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '0.5rem', color: '#475569' }}>📝 Nota de Justificación (Para Status Gerencial):</label>
+              <textarea
                 value={workflowComment}
                 onChange={e => setWorkflowComment(e.target.value)}
                 placeholder="Ej. Dejo S/ 500 libres porque falta crear la partida de Muro de Contención para absorber este saldo..."
-                style={{width: '100%', minHeight: '120px', padding: '0.75rem', borderRadius: '4px', border: '1px solid #cbd5e1', resize: 'vertical'}}
+                style={{ width: '100%', minHeight: '120px', padding: '0.75rem', borderRadius: '4px', border: '1px solid #cbd5e1', resize: 'vertical' }}
               />
             </div>
           </div>
