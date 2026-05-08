@@ -13,9 +13,10 @@ export async function GET(request: Request) {
       const result = await client.query(`
         SELECT
           i.codigo_insumo as codigo,
-          MAX(i.descripcion_insumo) as nombre,
-          MAX(i.unidad) as unidad,
-          SUM(i.cantidad_requerida_p) as meta_cantidad,
+          i.descripcion_insumo as nombre,
+          i.unidad,
+          i.cantidad_requerida_p as meta_cantidad,
+          i.precio_p as precio,
           COUNT(m.id) as linked_count,
           COALESCE((
             SELECT SUM(c.cantidad_und) 
@@ -27,8 +28,8 @@ export async function GET(request: Request) {
           1 as total_registros
         FROM insumos_resumen i
         LEFT JOIN mapeo_vinculacion m ON i.codigo_insumo = m.codigo_insumo
-        GROUP BY i.codigo_insumo
-        ORDER BY MAX(i.descripcion_insumo)
+        GROUP BY i.codigo_insumo, i.descripcion_insumo, i.unidad, i.cantidad_requerida_p, i.precio_p
+        ORDER BY i.descripcion_insumo
       `);
 
       const unlinkedResult = await client.query(`
@@ -41,8 +42,57 @@ export async function GET(request: Request) {
         insumos: result.rows,
         total_unlinked_compras: unlinkedResult.rows[0].count || 0
       });
+    } else if (mode === 'compras_master') {
+      const result = await client.query(`
+        SELECT 
+          c.id as codigo, 
+          c.detalle as nombre, 
+          c.unidad_und as unidad, 
+          c.cantidad_und as cantidad, 
+          (SELECT COUNT(*) FROM mapeo_vinculacion m WHERE m.compra_id = c.id) as linked_count,
+          (SELECT ir.descripcion_insumo FROM mapeo_vinculacion m2 JOIN insumos_resumen ir ON m2.codigo_insumo = ir.codigo_insumo WHERE m2.compra_id = c.id LIMIT 1) as vinculado_a,
+          c.num_compra,
+          c.tipo_compra,
+          c.anio
+        FROM compras_c c
+        ORDER BY c.id DESC
+      `);
+      client.release();
+      return NextResponse.json({ compras: result.rows });
+    } else if (searchParams.get('compra_master')) {
+      const compraId = searchParams.get('compra_master');
+      
+      const insumosResult = await client.query(`
+        SELECT 
+          i.codigo_insumo as codigo,
+          i.descripcion_insumo as nombre,
+          i.unidad,
+          i.cantidad_requerida_p as meta_cantidad,
+          COALESCE((
+            SELECT SUM(c2.cantidad_und) 
+            FROM mapeo_vinculacion m2 
+            JOIN compras_c c2 ON m2.compra_id = c2.id 
+            WHERE m2.codigo_insumo = i.codigo_insumo
+          ), 0) as adquirido,
+          CASE 
+            WHEN m.id IS NOT NULL THEN 'vinculado'
+            ELSE 'disponible'
+          END as estado
+        FROM (SELECT DISTINCT codigo_insumo, descripcion_insumo, unidad, cantidad_requerida_p FROM insumos_resumen) i
+        LEFT JOIN mapeo_vinculacion m ON i.codigo_insumo = m.codigo_insumo AND m.compra_id = $1
+        ORDER BY i.descripcion_insumo
+      `, [compraId]);
+      
+      // Check if this compra is linked to anything at all
+      const checkLink = await client.query('SELECT codigo_insumo FROM mapeo_vinculacion WHERE compra_id = $1', [compraId]);
+      const isLinkedTo = checkLink.rows.length > 0 ? checkLink.rows[0].codigo_insumo : null;
+
+      client.release();
+      return NextResponse.json({
+        isLinkedTo: isLinkedTo,
+        insumos: insumosResult.rows
+      });
     } else if (insumo) {
-      // insumo is codigo_insumo now
       const metaResult = await client.query(`
         SELECT
           cantidad_requerida_p as meta_cantidad,
@@ -72,13 +122,12 @@ export async function GET(request: Request) {
           c.detalle as insumo_descripcion,
           '' as observacion,
           CASE 
-              WHEN m.id IS NOT NULL AND m.codigo_insumo = $1 THEN 'vinculado'
-              WHEN m.id IS NOT NULL AND m.codigo_insumo != $1 THEN 'bloqueado'
+              WHEN EXISTS (SELECT 1 FROM mapeo_vinculacion m2 WHERE m2.compra_id = c.id AND m2.codigo_insumo = $1) THEN 'vinculado'
+              WHEN EXISTS (SELECT 1 FROM mapeo_vinculacion m2 WHERE m2.compra_id = c.id) THEN 'bloqueado'
               ELSE 'disponible'
           END as estado,
-          (SELECT descripcion_insumo FROM insumos_resumen ir WHERE ir.codigo_insumo = m.codigo_insumo LIMIT 1) as vinculado_a
+          (SELECT ir.descripcion_insumo FROM mapeo_vinculacion m2 JOIN insumos_resumen ir ON m2.codigo_insumo = ir.codigo_insumo WHERE m2.compra_id = c.id LIMIT 1) as vinculado_a
         FROM compras_c c
-        LEFT JOIN mapeo_vinculacion m ON c.id = m.compra_id
         ORDER BY c.id DESC
       `, [insumo]);
 

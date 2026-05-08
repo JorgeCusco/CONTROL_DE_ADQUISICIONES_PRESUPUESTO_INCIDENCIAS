@@ -13,17 +13,20 @@ export default function ApuComparative({
   codigoPartida,
   selectedInsumoName,
   modifiedIncidencia,
+  ppp,
   onIncidenciaChange,
   onIncidenciaBlur
 }: {
   codigoPartida: string;
   selectedInsumoName: string;
   modifiedIncidencia: number;
+  ppp: number;
   onIncidenciaChange: (val: number) => void;
   onIncidenciaBlur?: () => void;
 }) {
   const [insumos, setInsumos] = useState<InsumoAPU[]>([]);
   const [rendimientoOriginal, setRendimientoOriginal] = useState<string>('');
+  const [metradoFijo, setMetradoFijo] = useState<number>(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -33,8 +36,9 @@ export default function ApuComparative({
         if (data.insumos) {
           setInsumos(data.insumos);
           setRendimientoOriginal(data.rendimiento);
+          setMetradoFijo(data.metrado_fijo || 0);
         } else {
-          setInsumos(data);
+          setInsumos(Array.isArray(data) ? data : []);
         }
         setLoading(false);
       });
@@ -52,9 +56,14 @@ export default function ApuComparative({
       <div style={{flex: 1}}>
         <h4 style={{color: '#475569', marginBottom: '0.5rem', borderBottom: '2px solid #94a3b8', paddingBottom: '0.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
           <span>📜 APU Antiguo (Original)</span>
-          <span style={{fontSize: '0.75rem', background: '#e2e8f0', padding: '2px 8px', borderRadius: '4px'}}>
-            Rend: {rendimientoOriginal}
-          </span>
+          <div style={{display: 'flex', gap: '0.5rem'}}>
+            <span style={{fontSize: '0.75rem', background: '#f1f5f9', border: '1px solid #cbd5e1', padding: '2px 8px', borderRadius: '4px', color: '#475569', fontWeight: 'bold'}}>
+              Metrado Fijo: {Number(metradoFijo).toFixed(4)}
+            </span>
+            <span style={{fontSize: '0.75rem', background: '#e2e8f0', padding: '2px 8px', borderRadius: '4px', color: '#475569', fontWeight: 'bold'}}>
+              Rend: {rendimientoOriginal}
+            </span>
+          </div>
         </h4>
         <table style={{width: '100%', fontSize: '0.85rem', borderCollapse: 'collapse'}}>
           <thead>
@@ -62,24 +71,43 @@ export default function ApuComparative({
               <th style={{textAlign: 'left', padding: '4px'}}>Insumo</th>
               <th style={{padding: '4px'}}>Unid</th>
               <th style={{textAlign: 'right', padding: '4px'}}>Cant</th>
+              <th style={{textAlign: 'right', padding: '4px'}}>Inci X M</th>
+              <th style={{textAlign: 'right', padding: '4px'}}>P.U.</th>
               <th style={{textAlign: 'right', padding: '4px'}}>Parcial</th>
             </tr>
           </thead>
           <tbody>
-            {insumos.map(ins => {
+            {insumos.map((ins, index) => {
               const cant = Number(ins.incidencia_original) || 0;
+              const inci_x_m = cant * metradoFijo;
               const parcial = Number(ins.parcial_original) || 0;
               const precio = cant > 0 ? (parcial / cant) : 0;
               totalAntiguo += parcial;
-              
+
               const isSelected = ins.descripcion === selectedInsumoName;
               return (
-                <tr key={ins.id} style={{background: isSelected ? '#fef08a' : 'transparent', borderBottom: '1px solid #e2e8f0'}}>
+                <tr key={`${ins.id}-${index}`} style={{background: isSelected ? '#fef08a' : 'transparent', borderBottom: '1px solid #e2e8f0'}}>
                   <td style={{padding: '4px', maxWidth: '150px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}} title={ins.descripcion}>
                     {ins.descripcion}
                   </td>
                   <td style={{padding: '4px', textAlign: 'center'}}>{ins.unidad}</td>
-                  <td style={{padding: '4px', textAlign: 'right'}}>{cant.toFixed(4)}</td>
+                  <td style={{
+                    padding: '4px', 
+                    textAlign: 'right', 
+                    background: '#fef08a', 
+                    fontWeight: isSelected ? 'bold' : 'normal'
+                  }}>
+                    {cant.toFixed(4)}
+                  </td>
+                  <td style={{
+                    padding: '4px', 
+                    textAlign: 'right', 
+                    background: '#fef08a', 
+                    fontWeight: isSelected ? 'bold' : 'normal'
+                  }}>
+                    {inci_x_m.toFixed(4)}
+                  </td>
+                  <td style={{padding: '4px', textAlign: 'right'}}>{precio.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 4})}</td>
                   <td style={{padding: '4px', textAlign: 'right', fontWeight: isSelected ? 'bold' : 'normal'}}>{parcial.toFixed(4)}</td>
                 </tr>
               );
@@ -87,7 +115,7 @@ export default function ApuComparative({
           </tbody>
           <tfoot>
             <tr>
-              <td colSpan={3} style={{textAlign: 'right', fontWeight: 'bold', padding: '8px'}}>TOTAL:</td>
+              <td colSpan={5} style={{textAlign: 'right', fontWeight: 'bold', padding: '8px'}}>TOTAL:</td>
               <td style={{textAlign: 'right', fontWeight: 'bold', padding: '8px'}}>{totalAntiguo.toFixed(4)}</td>
             </tr>
           </tfoot>
@@ -100,61 +128,90 @@ export default function ApuComparative({
       <div style={{flex: 1}}>
         <h4 style={{color: '#1d4ed8', marginBottom: '0.5rem', borderBottom: '2px solid #93c5fd', paddingBottom: '0.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
           <span>✨ APU Nuevo (Modificado)</span>
-          <span style={{fontSize: '0.75rem', background: '#dbeafe', padding: '2px 8px', borderRadius: '4px', border: '1px solid #93c5fd', color: '#1d4ed8', fontWeight: 'bold'}}>
-            Rend: {rendimientoOriginal}
-          </span>
+          <div style={{display: 'flex', gap: '0.5rem'}}>
+            <span style={{fontSize: '0.75rem', background: '#eff6ff', padding: '2px 8px', borderRadius: '4px', border: '1px solid #bfdbfe', color: '#1d4ed8', fontWeight: 'bold'}}>
+              Metrado Fijo: {Number(metradoFijo).toFixed(4)}
+            </span>
+            <span style={{fontSize: '0.75rem', background: '#dbeafe', padding: '2px 8px', borderRadius: '4px', border: '1px solid #93c5fd', color: '#1d4ed8', fontWeight: 'bold'}}>
+              Rend: {rendimientoOriginal}
+            </span>
+          </div>
         </h4>
         <table style={{width: '100%', fontSize: '0.85rem', borderCollapse: 'collapse'}}>
           <thead>
             <tr style={{background: '#dbeafe'}}>
               <th style={{textAlign: 'left', padding: '4px'}}>Insumo</th>
               <th style={{padding: '4px'}}>Unid</th>
-              <th style={{textAlign: 'right', padding: '4px'}}>Cant (Nueva)</th>
-              <th style={{textAlign: 'right', padding: '4px'}}>Parcial (Nuevo)</th>
+              <th style={{textAlign: 'right', padding: '4px'}}>Cant (N)</th>
+              <th style={{textAlign: 'right', padding: '4px'}}>Inci X M</th>
+              <th style={{textAlign: 'right', padding: '4px'}}>P.U. (N)</th>
+              <th style={{textAlign: 'right', padding: '4px'}}>Parcial (N)</th>
             </tr>
           </thead>
           <tbody>
-            {insumos.map(ins => {
+            {insumos.map((ins, index) => {
               const cantOrig = Number(ins.incidencia_original) || 0;
               const parcialOrig = Number(ins.parcial_original) || 0;
-              const precio = cantOrig > 0 ? (parcialOrig / cantOrig) : 0;
-              
+              const precioOrig = cantOrig > 0 ? (parcialOrig / cantOrig) : 0;
+
               const isSelected = ins.descripcion === selectedInsumoName;
-              
-              // Modificada uses the prop if selected, otherwise it uses the original or DB value
+
               const cantNueva = isSelected ? modifiedIncidencia : cantOrig;
-              // Parcial calculation: since pricing is irrelevant, we can just use the quantity 
-              // but to maintain parity with how it used to calculate "Parcial", we'll just show the quantity.
-              // Wait, Parcial IS the quantity multiplied by performance? No, Parcial IS the quantity * metrado.
-              // But here in ApuComparative, Parcial = Cantidad total. Wait, Parcial Original IS `parcial_p`. `incidencia_original` is `cantidad_p`.
-              // So `parcial_p` is basically the cost in standard APU, but for us "Parcial" means total quantity.
-              const parcialNuevo = cantNueva;
-              
+              const inci_x_m = cantNueva * metradoFijo;
+              const precioNuevo = isSelected ? ppp : precioOrig;
+              const parcialNuevo = cantNueva * precioNuevo;
+
               totalNuevo += parcialNuevo;
-              
+
               return (
-                <tr key={ins.id} style={{background: isSelected ? '#bfdbfe' : 'transparent', borderBottom: '1px solid #e2e8f0'}}>
+                <tr key={`${ins.id}-${index}`} style={{background: isSelected ? '#bfdbfe' : 'transparent', borderBottom: '1px solid #e2e8f0'}}>
                   <td style={{padding: '4px', maxWidth: '150px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}} title={ins.descripcion}>
                     {ins.descripcion}
                   </td>
                   <td style={{padding: '4px', textAlign: 'center'}}>{ins.unidad}</td>
-                  
+
                   {/* EDITABLE CANTIDAD FOR SELECTED INSUMO */}
-                  <td style={{padding: '4px', textAlign: 'right'}}>
+                  <td style={{
+                    padding: '4px', 
+                    textAlign: 'right', 
+                    background: '#bfdbfe',
+                    fontWeight: isSelected ? 'bold' : 'normal'
+                  }}>
                     {isSelected ? (
-                      <input 
+                      <input
                         type="number"
                         step="0.000001"
                         value={modifiedIncidencia}
                         onChange={(e) => onIncidenciaChange(parseFloat(e.target.value) || 0)}
                         onBlur={onIncidenciaBlur}
-                        style={{width: '80px', textAlign: 'right', padding: '2px', border: '1px solid #2563eb', fontWeight: 'bold'}}
+                        style={{
+                          width: '80px', 
+                          textAlign: 'right', 
+                          padding: '2px', 
+                          border: '1px solid #2563eb', 
+                          fontWeight: 'bold',
+                          background: '#eff6ff'
+                        }}
                       />
                     ) : (
                       cantNueva.toFixed(4)
                     )}
                   </td>
-                  
+
+                  <td style={{
+                    padding: '4px', 
+                    textAlign: 'right', 
+                    background: '#bfdbfe', 
+                    fontWeight: isSelected ? 'bold' : 'normal', 
+                    color: isSelected ? '#1e40af' : 'inherit'
+                  }}>
+                    {inci_x_m.toFixed(4)}
+                  </td>
+
+                  <td style={{padding: '4px', textAlign: 'right', fontWeight: isSelected ? 'bold' : 'normal', color: isSelected ? '#166534' : 'inherit'}}>
+                    {precioNuevo.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 4})}
+                  </td>
+
                   <td style={{padding: '4px', textAlign: 'right', fontWeight: isSelected ? 'bold' : 'normal', color: isSelected ? '#1d4ed8' : 'inherit'}}>
                     {parcialNuevo.toFixed(4)}
                   </td>
@@ -164,7 +221,7 @@ export default function ApuComparative({
           </tbody>
           <tfoot>
             <tr>
-              <td colSpan={3} style={{textAlign: 'right', fontWeight: 'bold', padding: '8px', color: '#1d4ed8'}}>TOTAL NUEVO:</td>
+              <td colSpan={5} style={{textAlign: 'right', fontWeight: 'bold', padding: '8px', color: '#1d4ed8'}}>TOTAL NUEVO:</td>
               <td style={{textAlign: 'right', fontWeight: 'bold', padding: '8px', color: '#1d4ed8'}}>{totalNuevo.toFixed(4)}</td>
             </tr>
           </tfoot>

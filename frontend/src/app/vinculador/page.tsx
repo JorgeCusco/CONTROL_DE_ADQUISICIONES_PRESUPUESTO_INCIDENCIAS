@@ -86,8 +86,8 @@ export default function VinculadorPage() {
   const handleSelectInsumo = (codigo: string, nombre: string) => {
     setSelectedInsumoCodigo(codigo);
     setSelectedInsumoNombre(nombre);
-    setSearchCompra('');
-    setFilterCompra('all');
+    // REMOVED: setSearchCompra('') to keep the search term intact when switching insumos
+    // REMOVED: setFilterCompra('all') to keep filters intact
     loadCompras(codigo);
   };
 
@@ -132,20 +132,27 @@ export default function VinculadorPage() {
     }
   };
 
+  const matchesBoolean = (target: string, search: string) => {
+    if (!search) return true;
+    const tokens = normalize(search).split(/\s+/).filter(t => t.length > 0);
+    const normalizedTarget = normalize(target);
+    return tokens.every(token => normalizedTarget.includes(token));
+  };
+
   const filteredInsumos = insumos.filter(i => {
     if (filterStatus === 'vinculado' && Number(i.linked_count) === 0) return false;
     if (filterStatus === 'sin_vincular' && Number(i.linked_count) > 0) return false;
-    if (searchInsumo && !normalize(i.nombre).includes(normalize(searchInsumo))) return false;
+    if (searchInsumo) {
+      return matchesBoolean(i.nombre || '', searchInsumo) || matchesBoolean(i.codigo || '', searchInsumo);
+    }
     return true;
   });
 
   const filteredCompras = (comprasData?.compras ?? []).filter(c => {
     if (filterCompra !== 'all' && c.estado !== filterCompra) return false;
     if (searchCompra) {
-      const q = normalize(searchCompra);
-      return normalize(c.detalle_compra ?? '').includes(q) ||
-             normalize(c.orden_doc ?? '').includes(q) ||
-             normalize(c.insumo_descripcion ?? '').includes(q);
+      const combinedTarget = `${c.detalle_compra ?? ''} ${c.orden_doc ?? ''} ${c.insumo_descripcion ?? ''}`;
+      return matchesBoolean(combinedTarget, searchCompra);
     }
     return true;
   });
@@ -183,19 +190,52 @@ export default function VinculadorPage() {
           </div>
         </div>
         
-        <button 
-          onClick={() => window.location.href = '/api/exportar-vinculos'}
-          style={{
-            background: '#10b981', color: 'white', border: 'none', padding: '0.6rem 1.2rem', 
-            borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem',
-            boxShadow: '0 4px 6px -1px rgba(16, 185, 129, 0.3), 0 2px 4px -1px rgba(16, 185, 129, 0.2)',
-            transition: 'all 0.2s'
-          }}
-          onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
-          onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
-        >
-          📥 Exportar Vinculaciones
-        </button>
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+          <button
+            onClick={() => window.location.href = '/api/exportar-insumos'}
+            style={{
+              background: '#8b5cf6', color: 'white', border: 'none', padding: '0.6rem 1.2rem',
+              borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem',
+              boxShadow: '0 4px 6px -1px rgba(139, 92, 246, 0.3), 0 2px 4px -1px rgba(139, 92, 246, 0.2)',
+              transition: 'all 0.2s', fontSize: '0.95rem'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+            onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+            title="Descargar tabla de insumos del presupuesto en Excel"
+          >
+            📋 Insumos
+          </button>
+
+          <button
+            onClick={() => window.location.href = '/api/exportar-compras'}
+            style={{
+              background: '#f59e0b', color: 'white', border: 'none', padding: '0.6rem 1.2rem',
+              borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem',
+              boxShadow: '0 4px 6px -1px rgba(245, 158, 11, 0.3), 0 2px 4px -1px rgba(245, 158, 11, 0.2)',
+              transition: 'all 0.2s', fontSize: '0.95rem'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+            onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+            title="Descargar tabla de compras en Excel"
+          >
+            📦 Compras
+          </button>
+
+          <button
+            onClick={() => window.location.href = '/api/exportar-vinculos'}
+            style={{
+              background: '#10b981', color: 'white', border: 'none', padding: '0.6rem 1.2rem',
+              borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem',
+              boxShadow: '0 4px 6px -1px rgba(16, 185, 129, 0.3), 0 2px 4px -1px rgba(16, 185, 129, 0.2)',
+              transition: 'all 0.2s', fontSize: '0.95rem'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+            onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+            title="Descargar vinculaciones en CSV"
+          >
+            🔗 Vinculaciones
+          </button>
+        </div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: '1rem', flex: 1, minHeight: 0 }}>
@@ -213,7 +253,7 @@ export default function VinculadorPage() {
             <input
               value={searchInsumo}
               onChange={e => setSearchInsumo(e.target.value)}
-              placeholder="Buscar insumo..."
+              placeholder="Buscar insumo (ej: cemento sol)..."
               style={{ width: '100%', padding: '5px 8px', border: '1px solid #cbd5e1', borderRadius: '4px', fontSize: '0.82rem', boxSizing: 'border-box', marginBottom: '0.35rem' }}
             />
             <div style={{ display: 'flex', gap: '3px' }}>
@@ -229,19 +269,25 @@ export default function VinculadorPage() {
           <div style={{ flex: 1, overflowY: 'auto' }}>
             {loadingInsumos ? (
               <div style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8', fontSize: '0.85rem' }}>Cargando...</div>
-            ) : filteredInsumos.map(ins => {
+            ) : filteredInsumos.map((ins, index) => {
               const isSelected = selectedInsumoCodigo === ins.codigo;
               const isLinked = Number(ins.linked_count) > 0;
               return (
-                <div key={ins.codigo} onClick={() => handleSelectInsumo(ins.codigo, ins.nombre)}
+                <div key={`${ins.codigo}-${index}`} onClick={() => handleSelectInsumo(ins.codigo, ins.nombre)}
                   style={{ padding: '0.55rem 0.85rem', cursor: 'pointer', borderBottom: '1px solid #f1f5f9', background: isSelected ? '#dbeafe' : isLinked ? '#f0fdf4' : '#fff7ed', borderLeft: `3px solid ${isSelected ? '#2563eb' : isLinked ? '#16a34a' : '#f97316'}`, transition: 'background 0.1s' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.4rem' }}>
                     <span style={{ fontSize: '0.8rem', fontWeight: isSelected ? 600 : 400, color: '#1e293b', lineHeight: 1.3, flex: 1 }}>
                       {ins.nombre}
                     </span>
-                    <span style={{ fontSize: '0.7rem', padding: '1px 6px', borderRadius: '10px', whiteSpace: 'nowrap', background: isLinked ? '#dcfce7' : '#fee2e2', color: isLinked ? '#166534' : '#dc2626', fontWeight: 600 }}>
-                      {isLinked ? `🔗 ${ins.linked_count}` : '⬜ 0'}
-                    </span>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.2rem' }}>
+                      <span style={{ fontSize: '0.7rem', padding: '1px 6px', borderRadius: '10px', whiteSpace: 'nowrap', background: isLinked ? '#dcfce7' : '#fee2e2', color: isLinked ? '#166534' : '#dc2626', fontWeight: 600 }}>
+                        {isLinked ? `🔗 ${ins.linked_count}` : '⬜ 0'}
+                      </span>
+                      <div style={{ fontSize: '0.65rem', color: '#64748b', textAlign: 'right' }}>
+                        Precio:<br/>
+                        <span style={{fontWeight: 600}}>S/ {Number(ins.precio || 0).toFixed(2)}</span>
+                      </div>
+                    </div>
                   </div>
                   <div style={{ fontSize: '0.7rem', color: '#64748b', marginTop: '2px' }}>
                     Código: {ins.codigo} | Meta: {Number(ins.meta_cantidad).toFixed(2)} {ins.unidad}
@@ -286,7 +332,7 @@ export default function VinculadorPage() {
               {/* Toolbar */}
               <div style={{ padding: '0.55rem 0.75rem', borderBottom: '1px solid #e2e8f0', background: '#f8fafc', display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', flexShrink: 0 }}>
                 <input value={searchCompra} onChange={e => setSearchCompra(e.target.value)}
-                  placeholder="Buscar en compras..."
+                  placeholder="Buscar en compras (ej: factura cemento)..."
                   style={{ flex: '1 1 180px', padding: '5px 8px', border: '1px solid #cbd5e1', borderRadius: '4px', fontSize: '0.82rem' }} />
                 <div style={{ display: 'flex', gap: '3px' }}>
                   {(['all', 'vinculado', 'disponible', 'bloqueado'] as const).map(f => (
@@ -327,10 +373,10 @@ export default function VinculadorPage() {
                       {filteredCompras.length === 0 && (
                         <tr><td colSpan={9} style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8' }}>Sin resultados</td></tr>
                       )}
-                      {filteredCompras.map(c => {
+                      {filteredCompras.slice(0, 150).map((c, index) => {
                         const isSel = selected.has(c.id);
                         return (
-                          <tr key={c.id}
+                          <tr key={`${c.id}-${index}`}
                             style={{ background: isSel ? '#dbeafe' : STATUS_BG[c.estado], borderBottom: '1px solid #f1f5f9', cursor: c.estado === 'disponible' ? 'pointer' : 'default' }}
                             onClick={() => toggleSelect(c.id, c.estado)}>
                             <td style={{ padding: '5px 8px', textAlign: 'center' }}>
@@ -385,6 +431,13 @@ export default function VinculadorPage() {
                           </tr>
                         );
                       })}
+                      {filteredCompras.length > 150 && (
+                        <tr>
+                          <td colSpan={9} style={{ padding: '1rem', textAlign: 'center', background: '#f8fafc', color: '#64748b', fontSize: '0.8rem', borderTop: '1px dashed #cbd5e1' }}>
+                            Mostrando los primeros 150 resultados de {filteredCompras.length}. Usa el buscador para encontrar más compras.
+                          </td>
+                        </tr>
+                      )}
                     </tbody>
                   </table>
                 </div>

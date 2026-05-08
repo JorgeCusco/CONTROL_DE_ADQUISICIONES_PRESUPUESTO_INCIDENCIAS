@@ -65,6 +65,13 @@ Tabla pivote que enlaza las compras reales con los insumos del presupuesto ofici
 *   **`codigo_insumo`** `TEXT` (FK `insumos_p`).
 *   **`creado_en`** `TIMESTAMP`.
 
+### 6. `estado_cuadre_insumos` (Flujo Colaborativo - Transaccional)
+Tabla independiente para gestionar el estado de cuadre por insumo. Evita alterar las tablas inmutables `_p`.
+*   **`codigo_insumo`** `TEXT` (PK).
+*   **`estado`** `TEXT`: `Pendiente`, `En Revisión`, `Cuadre Parcial`, `Excedente`, `Terminado`.
+*   **`comentario`** `TEXT`: Justificación del analista.
+*   **`updated_at`** `TIMESTAMP`.
+
 ---
 
 ## 👁️ Vistas de Base de Datos (Views)
@@ -81,12 +88,15 @@ SELECT
     i.cantidad_p,
     i.costo_p,
     i.total_p,
+    COALESCE(e.estado, 'Pendiente') AS estado,
+    e.comentario,
     COALESCE(SUM(COALESCE(c.cantidad_und, c.cantidad_c)), 0) AS total_adquirido,
     (i.cantidad_p - COALESCE(SUM(COALESCE(c.cantidad_und, c.cantidad_c)), 0)) AS saldo
 FROM insumos_p i
 LEFT JOIN mapeo_vinculacion m ON i.codigo_insumo = m.codigo_insumo
 LEFT JOIN compras_c c ON m.compra_id = c.id
-GROUP BY i.codigo_insumo, i.descripcion_insumo, i.unidad, i.cantidad_p, i.costo_p, i.total_p;
+LEFT JOIN estado_cuadre_insumos e ON i.codigo_insumo = e.codigo_insumo
+GROUP BY i.codigo_insumo, i.descripcion_insumo, i.unidad, i.cantidad_p, i.costo_p, i.total_p, e.estado, e.comentario;
 ```
 
 ---
@@ -97,10 +107,12 @@ En este sistema, **el precio unitario no es el factor de ajuste**. Las operacion
 
 1. El usuario selecciona un Insumo y normaliza sus compras (`compras_c`), modificando `unidad_und` y `cantidad_und`.
 2. La suma de todas las `cantidad_und` vinculadas a este insumo se convierte en la **Meta de Cuadre Global** (`total_adquirido`).
-3. El usuario distribuye este `total_adquirido` en la tabla de APU, modificando `cantidad_c` (la incidencia de uso del insumo en cada partida) multiplicada por el `metrado_fijo` de la partida (`cantidad_p` de `partidas_p`).
+3. El usuario distribuye este `total_adquirido` en la tabla de APU, modificando `cantidad_c` (la incidencia de uso del insumo en cada partida).
 4. **Fórmula de Consistencia:**
    $$\text{Meta de Cuadre Global} = \sum (\text{cantidad\_c} \times \text{metrado\_fijo})$$
-   El frontend bloquea o advierte si esta igualdad no se cumple con un margen de error infinitesimal.
+5. **Cierre de Flujo (Guardado Colaborativo):**
+   * Ya no existe el botón global "Guardar Cuadre". Todas las celdas se auto-guardan por fila (`onBlur`).
+   * El cierre se realiza marcando el `estado_c` del insumo (ej. `Terminado` o `Cuadre Parcial`) y adjuntando un `comentario_c` si existe diferencia matemática o excedente.
 
 ---
 

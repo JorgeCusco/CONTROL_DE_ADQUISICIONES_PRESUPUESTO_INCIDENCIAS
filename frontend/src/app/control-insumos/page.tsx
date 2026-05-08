@@ -18,21 +18,104 @@ type Insumo = {
 
 export default function ControlInsumos() {
   const [partidas, setPartidas] = useState<Partida[]>([]);
+  const [filteredPartidas, setFilteredPartidas] = useState<Partida[]>([]);
   const [selectedPartida, setSelectedPartida] = useState<string>('');
-  
+  const [searchQuery, setSearchQuery] = useState('');
+
   const [insumos, setInsumos] = useState<Insumo[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [notification, setNotification] = useState('');
 
+  // Evaluador booleano
+  const evaluateBooleanQuery = (text: string, query: string): boolean => {
+    const normalizedText = text.toLowerCase();
+
+    if (!query.trim()) return true;
+
+    const tokens = query.toLowerCase().match(/(\(|\)|AND|OR|NOT|"[^"]*"|\S+)/g) || [];
+
+    const evaluate = (tokenList: string[], index: number): [boolean, number] => {
+      let result = true;
+      let i = index;
+
+      while (i < tokenList.length) {
+        const token = tokenList[i];
+
+        if (token === ')') {
+          return [result, i];
+        }
+
+        if (token === 'NOT') {
+          i++;
+          const [subResult, nextIdx] = evaluateTerm(tokenList, i);
+          result = result && !subResult;
+          i = nextIdx;
+        } else if (token === 'AND') {
+          i++;
+          const [subResult, nextIdx] = evaluateTerm(tokenList, i);
+          result = result && subResult;
+          i = nextIdx;
+        } else if (token === 'OR') {
+          i++;
+          const [subResult, nextIdx] = evaluateTerm(tokenList, i);
+          result = result || subResult;
+          i = nextIdx;
+        } else {
+          return [result, i];
+        }
+      }
+
+      return [result, i];
+    };
+
+    const evaluateTerm = (tokenList: string[], index: number): [boolean, number] => {
+      if (index >= tokenList.length) return [true, index];
+
+      const token = tokenList[index];
+
+      if (token === '(') {
+        const [result, nextIdx] = evaluate(tokenList, index + 1);
+        return [result, nextIdx + 1];
+      }
+
+      if (token === 'NOT') {
+        const [result, nextIdx] = evaluateTerm(tokenList, index + 1);
+        return [!result, nextIdx];
+      }
+
+      const cleanToken = token.replace(/^"|"$/g, '');
+      const matches = normalizedText.includes(cleanToken);
+      return [matches, index + 1];
+    };
+
+    const [result] = evaluateTerm(tokens, 0);
+    return result;
+  };
+
   // 1. Fetch partidas
   useEffect(() => {
     fetch('/api/partidas')
       .then(res => res.json())
-      .then(data => setPartidas(data));
+      .then(data => {
+        setPartidas(data);
+        setFilteredPartidas(data);
+      });
   }, []);
 
-  // 2. Fetch insumos for partida
+  // 2. Filter partidas on search query change
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setFilteredPartidas(partidas);
+      return;
+    }
+    const filtered = partidas.filter(p =>
+      evaluateBooleanQuery(`${p.codigo} ${p.descripcion}`, searchQuery)
+    );
+    setFilteredPartidas(filtered);
+  }, [searchQuery, partidas]);
+
+  // 3. Fetch insumos for partida
   useEffect(() => {
     if (!selectedPartida) {
       setInsumos([]);
@@ -66,13 +149,13 @@ export default function ControlInsumos() {
         cantidad_adquirida: Number(i.cantidad_adquirida),
         cantidad_modificada: Number(i.cantidad_modificada)
       }));
-      
+
       const res = await fetch('/api/partidas', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ updates })
       });
-      
+
       if (res.ok) {
         setNotification('✅ Cambios guardados correctamente en la base de datos.');
         setTimeout(() => setNotification(''), 3000);
@@ -89,22 +172,75 @@ export default function ControlInsumos() {
   return (
     <main className="container">
       <h1>⚙️ Control de Insumos Colaborativo</h1>
-      
+
       <div className="card">
         <div className="selector-group">
-          <label htmlFor="partida-select"><strong>1. Selección de Partida</strong></label>
-          <select 
-            id="partida-select" 
-            value={selectedPartida} 
+          <label htmlFor="partida-search"><strong>1. Selección de Partida</strong></label>
+
+          <input
+            id="partida-search"
+            type="text"
+            placeholder='Busca por código o descripción: ej: OE.1.1 | ESTRUCTURAL AND CONCRETO | NOT AYUDANTE'
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            style={{
+              width: '100%',
+              padding: '0.75rem',
+              border: '2px solid #e5e7eb',
+              borderRadius: '6px',
+              fontSize: '0.95rem',
+              marginBottom: '0.75rem',
+              boxSizing: 'border-box'
+            }}
+          />
+
+          <div style={{fontSize: '0.85rem', color: '#666', marginBottom: '1rem', lineHeight: '1.5'}}>
+            <strong>Operadores:</strong> <code style={{background: '#f3f4f6', padding: '2px 4px', borderRadius: '2px'}}>AND</code>
+            {' '}<code style={{background: '#f3f4f6', padding: '2px 4px', borderRadius: '2px'}}>OR</code>
+            {' '}<code style={{background: '#f3f4f6', padding: '2px 4px', borderRadius: '2px'}}>NOT</code>
+          </div>
+
+          <select
+            id="partida-select"
+            value={selectedPartida}
             onChange={e => setSelectedPartida(e.target.value)}
+            size={Math.min(filteredPartidas.length + 1, 10)}
           >
-            <option value="">-- Elija una partida --</option>
-            {partidas.map(p => (
+            <option value="">-- Selecciona una partida --</option>
+            {filteredPartidas.map(p => (
               <option key={p.codigo} value={`${p.codigo} - ${p.descripcion}`}>
                 {p.codigo} - {p.descripcion}
               </option>
             ))}
           </select>
+
+          {searchQuery && filteredPartidas.length > 0 && (
+            <div style={{
+              marginTop: '0.75rem',
+              padding: '0.75rem',
+              background: '#f0f9ff',
+              border: '1px solid #bfdbfe',
+              borderRadius: '4px',
+              color: '#0369a1',
+              fontSize: '0.9rem'
+            }}>
+              📊 Se encontraron <strong>{filteredPartidas.length}</strong> partidas
+            </div>
+          )}
+
+          {searchQuery && filteredPartidas.length === 0 && (
+            <div style={{
+              marginTop: '0.75rem',
+              padding: '0.75rem',
+              background: '#fef3c7',
+              border: '1px solid #fcd34d',
+              borderRadius: '4px',
+              color: '#92400e',
+              fontSize: '0.9rem'
+            }}>
+              ⚠️ No se encontraron partidas con esos criterios
+            </div>
+          )}
         </div>
       </div>
 
@@ -112,15 +248,15 @@ export default function ControlInsumos() {
         <div className="card">
           <div className="header-row">
             <h2>2. Edición de Insumos</h2>
-            <button 
-              className={`btn ${saving ? '' : 'btn-success'}`} 
-              onClick={handleSave} 
+            <button
+              className={`btn ${saving ? '' : 'btn-success'}`}
+              onClick={handleSave}
               disabled={saving}
             >
               {saving ? 'Guardando...' : '💾 Guardar Cambios en PostgreSQL'}
             </button>
           </div>
-          
+
           <p style={{color: '#666', marginBottom: '1rem'}}>
             Modifique las cantidades según corresponda:
           </p>
@@ -177,28 +313,28 @@ export default function ControlInsumos() {
                       <td>{insumo.id}</td>
                       <td>{insumo.descripcion}</td>
                       <td>{insumo.unidad}</td>
-                      
+
                       <td className="editable">
-                        <input 
-                          type="number" 
+                        <input
+                          type="number"
                           step="0.0001"
-                          value={insumo.incidencia} 
+                          value={insumo.incidencia}
                           onChange={(e) => handleEdit(index, 'incidencia', parseFloat(e.target.value) || 0)}
                         />
                       </td>
                       <td className="editable">
-                        <input 
-                          type="number" 
+                        <input
+                          type="number"
                           step="0.0001"
-                          value={insumo.cantidad_adquirida} 
+                          value={insumo.cantidad_adquirida}
                           onChange={(e) => handleEdit(index, 'cantidad_adquirida', parseFloat(e.target.value) || 0)}
                         />
                       </td>
                       <td className="editable">
-                        <input 
-                          type="number" 
+                        <input
+                          type="number"
                           step="0.0001"
-                          value={insumo.cantidad_modificada} 
+                          value={insumo.cantidad_modificada}
                           onChange={(e) => handleEdit(index, 'cantidad_modificada', parseFloat(e.target.value) || 0)}
                         />
                       </td>

@@ -6,7 +6,7 @@ export async function GET() {
     const client = await pool.connect();
     
     // Get unique insumos
-    const insumosResult = await client.query('SELECT codigo_insumo as codigo, MAX(descripcion_insumo) as nombre FROM insumos_resumen GROUP BY codigo_insumo ORDER BY MAX(descripcion_insumo)');
+    const insumosResult = await client.query('SELECT DISTINCT codigo_insumo as codigo, descripcion_insumo as nombre, estado, comentario FROM insumos_resumen ORDER BY descripcion_insumo');
     const insumos = insumosResult.rows;
     
     // Get unique units

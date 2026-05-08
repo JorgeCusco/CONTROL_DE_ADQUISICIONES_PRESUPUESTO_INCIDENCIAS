@@ -34,7 +34,7 @@ type Apu = {
 };
 
 export default function Home() {
-  const [insumosList, setInsumosList] = useState<{codigo: string, nombre: string}[]>([]);
+  const [insumosList, setInsumosList] = useState<{codigo: string, nombre: string, estado?: string, comentario?: string}[]>([]);
   const [unitsList, setUnitsList] = useState<string[]>([]);
   const [selectedInsumo, setSelectedInsumo] = useState<string>('');
   const [selectedInsumoName, setSelectedInsumoName] = useState<string>('');
@@ -49,6 +49,8 @@ export default function Home() {
   const [globalAdquirido, setGlobalAdquirido] = useState<number>(0);
   const [isMetaLocked, setIsMetaLocked] = useState(true);
   const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
+  const [workflowState, setWorkflowState] = useState('Pendiente');
+  const [workflowComment, setWorkflowComment] = useState('');
 
   // Search state
   const [searchTerm, setSearchTerm] = useState('');
@@ -114,6 +116,12 @@ export default function Home() {
       return;
     }
     setLoading(true);
+    
+    const insumoData = insumosList.find(i => i.codigo === selectedInsumo);
+    if (insumoData) {
+      setWorkflowState(insumoData.estado || 'Pendiente');
+      setWorkflowComment(insumoData.comentario || '');
+    }
     
     fetch(`/api/compras?insumo=${encodeURIComponent(selectedInsumo)}`)
       .then(res => res.json())
@@ -232,60 +240,46 @@ export default function Home() {
     }
   };
 
-  // Save to DB
-  const handleSave = async () => {
-    setSaving(true);
-    setNotification('');
+  const autoSaveCompra = async (compra: Compra) => {
     try {
-      const updatesCompras = compras.map(c => ({
-        id: c.id,
-        unidad: c.unidad,
-        cantidad_und: Number(c.cantidad_und)
-      }));
-      
-      const resCompras = await fetch('/api/compras', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ updates: updatesCompras })
-      });
-      
-      const updatesApu = apuData.map(a => ({
-        id: a.id,
-        cantidad_2: Number(a.cantidad_2),
-        cantidad_adquirida: globalAdquirido, // Apply global value to all rows
-        cantidad_modificada: Number(a.cantidad_2) * Number(a.metrado_fijo)
-      }));
-      
-      const resApu = await fetch('/api/apu', {
+      const res = await fetch('/api/compras', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          updates: updatesApu,
-          globalNameUpdate: {
-            oldName: selectedInsumo, // using codigo_insumo as oldName identifier!
-            newName: officialName
-          }
+          updates: [{
+            id: compra.id,
+            unidad: compra.unidad,
+            cantidad_und: Number(compra.cantidad_und),
+            precio_unit: Number(compra.precio_unit)
+          }] 
         })
       });
-      
-      if (resCompras.ok && resApu.ok) {
-        setNotification('✅ Cambios guardados. Si cambiaste el nombre, verás la lista actualizada.');
-        setTimeout(() => setNotification(''), 4000);
-        
-        // Refresh the main list if name changed
-        if (officialName !== selectedInsumoName) {
-          fetch('/api/data')
-            .then(res => res.json())
-            .then(data => {
-              setInsumosList(data.insumos || []);
-              setSelectedInsumoName(officialName);
-            });
-        }
-      } else {
-        setNotification('❌ Error al guardar en una de las tablas.');
+      if (!res.ok) setNotification('❌ Error al auto-guardar compra.');
+    } catch(e) {
+      setNotification('❌ Error de conexión al auto-guardar.');
+    }
+  };
+
+  const saveWorkflowState = async () => {
+    try {
+      setSaving(true);
+      const res = await fetch('/api/estado-insumo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          codigo_insumo: selectedInsumo,
+          estado: workflowState,
+          comentario: workflowComment
+        })
+      });
+      if (res.ok) {
+        setNotification('✅ Estado guardado exitosamente.');
+        setTimeout(() => setNotification(''), 3000);
+        // Refresh local list state
+        setInsumosList(prev => prev.map(i => i.codigo === selectedInsumo ? {...i, estado: workflowState, comentario: workflowComment} : i));
       }
-    } catch (e) {
-      setNotification('❌ Error de conexión.');
+    } catch(e) {
+      setNotification('❌ Error al guardar estado.');
     } finally {
       setSaving(false);
     }
@@ -343,7 +337,7 @@ export default function Home() {
             }}>
               {filteredInsumos.map((ins, i) => (
                 <div 
-                  key={ins.codigo} 
+                  key={`${ins.codigo}-${i}`} 
                   onClick={() => {
                     setSelectedInsumo(ins.codigo);
                     setSelectedInsumoName(ins.nombre);
@@ -382,13 +376,6 @@ export default function Home() {
         <div className="card">
           <div className="header-row">
             <h2>🛒 Cuadre Manual de Compras (Unificar Unidades)</h2>
-            <button 
-              className={`btn ${saving ? '' : 'btn-success'}`} 
-              onClick={handleSave} 
-              disabled={saving}
-            >
-              {saving ? 'Guardando...' : '💾 Guardar Cuadre'}
-            </button>
           </div>
           
           <p style={{color: '#666', marginBottom: '1rem'}}>
@@ -400,7 +387,18 @@ export default function Home() {
             <select 
               id="official-name"
               value={officialName}
-              onChange={(e) => setOfficialName(e.target.value)}
+              onChange={(e) => {
+                setOfficialName(e.target.value);
+                // Auto-save name
+                fetch('/api/apu', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ updates: [], globalNameUpdate: { oldName: selectedInsumo, newName: e.target.value } })
+                }).then(() => {
+                  setNotification('✅ Nombre oficial actualizado.');
+                  setTimeout(() => setNotification(''), 2000);
+                });
+              }}
               style={{width: '100%', maxWidth: '600px'}}
             >
               {availableNames.map((name, i) => (
@@ -451,8 +449,11 @@ export default function Home() {
                     <th>Detalle</th>
                     <th>Unidad Orig.</th>
                     <th style={{textAlign: 'right'}}>Cant. Orig.</th>
+                    <th style={{textAlign: 'right'}}>Precio Orig.</th>
                     <th>Unidad (Editable)</th>
                     <th style={{textAlign: 'right'}}>Cantidad_Und (Editable)</th>
+                    <th style={{textAlign: 'right'}}>Precio Unit.</th>
+                    <th style={{textAlign: 'right'}}>Total</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -472,12 +473,16 @@ export default function Home() {
                           {compra.unidad_orig}
                         </td>
                         <td style={{textAlign: 'right'}}>{Number(compra.cant_orig).toFixed(4)}</td>
+                        <td style={{textAlign: 'right', color: '#64748b', fontSize: '0.9rem'}}>
+                          S/ {Number(compra.precio_orig).toFixed(2)}
+                        </td>
 
                         {/* EDITABLE UNIT */}
                         <td className="editable" style={{display: 'flex', alignItems: 'center', gap: '0.5rem', border: 'none', background: 'transparent'}}>
                           <select 
                             value={compra.unidad} 
                             onChange={(e) => handleEdit(index, 'unidad', e.target.value)}
+                            onBlur={() => autoSaveCompra(compra)}
                             style={{
                               border: index === 0 ? '2px solid var(--primary)' : '1px solid #cbd5e1',
                               background: index === 0 ? '#eff6ff' : 'white',
@@ -502,12 +507,34 @@ export default function Home() {
                             step="0.0001"
                             value={compra.cantidad_und} 
                             onChange={(e) => handleEdit(index, 'cantidad_und', parseFloat(e.target.value) || 0)}
+                            onBlur={() => autoSaveCompra(compra)}
                             disabled={!isMismatch}
                             style={{
                               background: !isMismatch ? '#f8fafc' : 'white',
                               cursor: !isMismatch ? 'not-allowed' : 'text'
                             }}
                           />
+                        </td>
+                        
+                        {/* EDITABLE PRICE UNIT (NEW) */}
+                        <td className="editable">
+                          <input 
+                            type="number" 
+                            step="0.0001"
+                            value={compra.precio_unit} 
+                            onChange={(e) => handleEdit(index, 'precio_unit', parseFloat(e.target.value) || 0)}
+                            onBlur={() => autoSaveCompra(compra)}
+                            style={{
+                              textAlign: 'right',
+                              background: !isMismatch ? '#f8fafc' : 'white',
+                              cursor: !isMismatch ? 'not-allowed' : 'text'
+                            }}
+                            disabled={!isMismatch}
+                          />
+                        </td>
+
+                        <td style={{textAlign: 'right', fontWeight: 'bold'}}>
+                          {(Number(compra.cantidad_und) * Number(compra.precio_unit)).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                         </td>
                       </tr>
                     );
@@ -522,10 +549,30 @@ export default function Home() {
               <div className="metric-label" style={{ color: '#854d0e', fontWeight: 'bold' }}>Total Adquirido Válido</div>
               <div className="metric-value" style={{ color: '#713f12' }}>{totals.totalAdquirido.toLocaleString('en-US', {minimumFractionDigits: 4, maximumFractionDigits: 4})}</div>
             </div>
+            <div className="metric-card" style={{ opacity: 0.6 }}>
+              <div className="metric-label">Suma Total (Costo)</div>
+              <div className="metric-value">S/ {totals.sumaImporte.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+            </div>
+            <div className="metric-card" style={{ background: '#fefce8', border: '2px solid #facc15', boxShadow: '0 4px 6px -1px rgba(234, 179, 8, 0.15)' }}>
+              <div className="metric-label" style={{ color: '#854d0e', fontWeight: 'bold' }}>Precio Promedio Ponderado</div>
+              <div className="metric-value" style={{ color: '#713f12' }}>S/ {totals.precioPromedio.toLocaleString('en-US', {minimumFractionDigits: 4, maximumFractionDigits: 4})}</div>
+            </div>
           </div>
-          <h2 style={{marginTop: '3rem'}}>📊 3. Edición de Incidencias (APU 2)</h2>
+          <h2 style={{marginTop: '1.5rem', marginBottom: '0.5rem'}}>📊 3. Edición de Incidencias (APU 2)</h2>
 
-          <div style={{marginBottom: '1.5rem', padding: '1.5rem', background: '#eef2ff', borderLeft: '4px solid #4f46e5', borderRadius: '4px'}}>
+          <div style={{marginBottom: '0.75rem', padding: '0.75rem 1rem', background: '#dcfce7', borderLeft: '4px solid #16a34a', borderRadius: '4px', border: '2px solid #22c55e'}}>
+            <div style={{display: 'flex', alignItems: 'center', gap: '1rem'}}>
+              <div>
+                <div style={{fontSize: '0.85rem', color: '#15803d', fontWeight: '600', marginBottom: '0.15rem'}}>✨ Precio Promedio Ponderado (PPP)</div>
+                <div style={{fontSize: '1.4rem', fontWeight: 'bold', color: '#166534'}}>S/ {totals.precioPromedio.toLocaleString('en-US', {minimumFractionDigits: 4, maximumFractionDigits: 4})}</div>
+              </div>
+              <div style={{fontSize: '0.8rem', color: '#15803d', fontStyle: 'italic', flex: 1}}>
+                Este es el precio unitario que se usará en el APU Nuevo Modificado para todos los APU de este insumo.
+              </div>
+            </div>
+          </div>
+
+          <div style={{marginBottom: '0.75rem', padding: '0.75rem 1rem', background: '#eef2ff', borderLeft: '4px solid #4f46e5', borderRadius: '4px'}}>
             <label htmlFor="global-adquirido" style={{fontWeight: 'bold', display: 'block', marginBottom: '0.5rem', color: '#312e81'}}>
               🎯 Meta de Cuadre Global (Total Adquirido Válido a Cuadrar):
             </label>
@@ -541,8 +588,8 @@ export default function Home() {
                   disabled={isMetaLocked}
                   style={{
                     width: '100%',
-                    padding: '0.75rem', 
-                    fontSize: '1.2rem',
+                    padding: '0.5rem', 
+                    fontSize: '1.1rem',
                     fontWeight: 'bold',
                     borderRadius: '6px', 
                     border: isMetaLocked ? '2px solid #e2e8f0' : '2px solid var(--primary)',
@@ -590,24 +637,27 @@ export default function Home() {
             </div>
           </div>
 
-          <p style={{color: '#666', marginBottom: '1rem'}}>
+          <p style={{color: '#666', marginBottom: '0.5rem', fontSize: '0.9rem'}}>
             Edite la <strong>CANTIDAD 2 (Incidencia)</strong> en cada partida para que la suma final cuadre con la Meta Global.
           </p>
 
-          <div style={{overflowX: 'auto'}}>
-            <table className="data-table">
+          <div style={{width: '100%', overflowX: 'hidden'}}>
+            <table className="data-table" style={{fontSize: '0.8rem'}}>
               <thead>
                 <tr>
-                  <th style={{width: '40px'}}></th>
-                  <th>Item 1</th>
-                  <th>Código 1</th>
-                  <th>Descripción Partida</th>
-                  <th>Unid.</th>
-                  <th style={{textAlign: 'right'}}>Cantidad 1</th>
-                  <th style={{textAlign: 'right'}}>Metrado Fijo</th>
-                  <th style={{textAlign: 'right'}}>Parcial 1</th>
-                  <th style={{textAlign: 'right', background: '#e2e8f0', color: '#1e293b'}}>CANTIDAD 2 (INCIDENCIA)</th>
-                  <th style={{textAlign: 'right'}}>Parcial 2</th>
+                  <th style={{width: '30px', padding: '0.5rem'}}></th>
+                  <th style={{whiteSpace: 'nowrap', padding: '0.5rem'}}>Item 1</th>
+                  <th style={{whiteSpace: 'nowrap', padding: '0.5rem'}}>Código 1</th>
+                  <th style={{padding: '0.5rem'}}>Descripción Partida</th>
+                  <th style={{whiteSpace: 'nowrap', padding: '0.5rem'}}>Unid.</th>
+                  <th style={{textAlign: 'right', whiteSpace: 'nowrap', padding: '0.5rem'}}>Cantidad 1</th>
+                  <th style={{textAlign: 'right', whiteSpace: 'nowrap', padding: '0.5rem'}}>Metrado Fijo</th>
+                  <th style={{textAlign: 'right', whiteSpace: 'nowrap', padding: '0.5rem'}}>Parcial 1</th>
+                  <th style={{textAlign: 'right', color: '#64748b', padding: '0.5rem'}}>Precio Unit Orig.</th>
+                  <th style={{textAlign: 'right', background: '#e2e8f0', color: '#1e293b', padding: '0.5rem', width: '100px'}}>CANTIDAD 2 (INCIDENCIA)</th>
+                  <th style={{textAlign: 'right', whiteSpace: 'nowrap', padding: '0.5rem'}}>Parcial 2</th>
+                  <th style={{textAlign: 'right', background: '#dcfce7', color: '#166534', fontWeight: 'bold', padding: '0.5rem'}}>Precio Unit Nuevo</th>
+                  <th style={{textAlign: 'right', background: '#dcfce7', color: '#166534', fontWeight: 'bold', padding: '0.5rem'}}>Costo Total Nuevo</th>
                 </tr>
               </thead>
               <tbody>
@@ -618,46 +668,62 @@ export default function Home() {
                   return (
                     <React.Fragment key={apu.id}>
                       <tr style={{background: isExpanded ? '#f1f5f9' : 'transparent', borderBottom: '1px solid #e2e8f0'}}>
-                        <td style={{textAlign: 'center'}}>
+                        <td style={{textAlign: 'center', padding: '0.5rem'}}>
                           <button
                             onClick={() => toggleRow(apu.id)}
-                            style={{background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem'}}
+                            style={{background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem'}}
                             title={isExpanded ? "Ocultar APU" : "Ver APU Completo"}
                           >
                             {isExpanded ? '🔽' : '▶️'}
                           </button>
                         </td>
-                        <td>{apu.item_1}</td>
-                        <td>{apu.codigo_insumo}</td>
-                        <td style={{maxWidth: '200px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}} title={apu.partida_desc}>
+                        <td style={{padding: '0.5rem'}}>{apu.item_1}</td>
+                        <td style={{padding: '0.5rem'}}>{apu.codigo_insumo}</td>
+                        <td style={{maxWidth: '150px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', padding: '0.5rem'}} title={apu.partida_desc}>
                           {apu.codigo_partida} - {apu.partida_desc}
                         </td>
-                        <td>{apu.unidad}</td>
-                        <td style={{textAlign: 'right'}}>{Number(apu.cantidad_1).toFixed(6)}</td>
-                        <td style={{textAlign: 'right'}}>{Number(apu.metrado_fijo).toFixed(4)}</td>
-                        <td style={{textAlign: 'right'}}>{Number(apu.parcial_1).toFixed(4)}</td>
+                        <td style={{padding: '0.5rem'}}>{apu.unidad}</td>
+                        <td style={{textAlign: 'right', padding: '0.5rem'}}>{Number(apu.cantidad_1).toFixed(6)}</td>
+                        <td style={{textAlign: 'right', padding: '0.5rem'}}>{Number(apu.metrado_fijo).toFixed(4)}</td>
+                        <td style={{textAlign: 'right', padding: '0.5rem'}}>{Number(apu.parcial_1).toFixed(4)}</td>
+
+                        {/* PRECIO UNIT ORIGINAL */}
+                        <td style={{textAlign: 'right', color: '#64748b', fontSize: '0.8rem', padding: '0.5rem'}}>
+                          S/ {Number(apu.precio_unit_original).toLocaleString('en-US', {minimumFractionDigits: 4, maximumFractionDigits: 4})}
+                        </td>
 
                         {/* EDITABLE CANTIDAD 2 */}
-                        <td className="editable" style={{border: '2px solid #94a3b8'}}>
+                        <td className="editable" style={{border: '2px solid #94a3b8', padding: '0'}}>
                           <input
                             type="number"
                             step="0.000001"
-                            style={{fontWeight: 'bold', color: '#0f172a'}}
+                            style={{fontWeight: 'bold', color: '#0f172a', width: '90px', textAlign: 'right', fontSize: '0.8rem', padding: '0.25rem'}}
                             value={apu.cantidad_2}
                             onChange={(e) => handleApuEdit(index, 'cantidad_2', parseFloat(e.target.value) || 0)}
                             onBlur={() => autoSaveApu(apu)}
                           />
                         </td>
 
-                        <td style={{textAlign: 'right', fontWeight: 'bold'}}>{parcial2.toFixed(4)}</td>
+                        <td style={{textAlign: 'right', fontWeight: 'bold', padding: '0.5rem'}}>{parcial2.toFixed(4)}</td>
+
+                        {/* PRECIO UNIT NUEVO (PPP) */}
+                        <td style={{textAlign: 'right', fontWeight: 'bold', background: '#f0fdf4', color: '#166534', padding: '0.5rem'}}>
+                          S/ {totals.precioPromedio.toLocaleString('en-US', {minimumFractionDigits: 4, maximumFractionDigits: 4})}
+                        </td>
+
+                        {/* COSTO TOTAL NUEVO */}
+                        <td style={{textAlign: 'right', fontWeight: 'bold', background: '#dcfce7', color: '#166534', padding: '0.5rem'}}>
+                          S/ {costoTotalNuevo.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                        </td>
                       </tr>
                       {isExpanded && (
                         <tr>
-                          <td colSpan={10} style={{padding: '0 1rem 1rem 1rem', background: '#f8fafc', borderBottom: '2px solid #cbd5e1'}}>
+                          <td colSpan={13} style={{padding: '0 1rem 1rem 1rem', background: '#f8fafc', borderBottom: '2px solid #cbd5e1'}}>
                             <ApuComparative 
                               codigoPartida={apu.codigo_partida} 
                               selectedInsumoName={selectedInsumoName}
                               modifiedIncidencia={Number(apu.cantidad_2)}
+                              ppp={totals.precioPromedio}
                               onIncidenciaChange={(val) => handleApuEdit(index, 'cantidad_2', val)}
                               onIncidenciaBlur={() => autoSaveApu(apu)}
                             />
@@ -707,6 +773,47 @@ export default function Home() {
               </div>
             );
           })()}
+          {/* WORKFLOW STATE PANEL */}
+          <div style={{marginTop: '2rem', padding: '1.5rem', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', display: 'flex', gap: '2rem', flexWrap: 'wrap'}}>
+            <div style={{flex: '1', minWidth: '300px'}}>
+              <h3 style={{marginBottom: '1rem', color: '#1e293b'}}>🚦 Cierre de Flujo de Cuadre</h3>
+              <div style={{marginBottom: '1rem'}}>
+                <label style={{display: 'block', fontWeight: 'bold', marginBottom: '0.5rem', color: '#475569'}}>Estado Actual del Insumo:</label>
+                <select 
+                  value={workflowState}
+                  onChange={e => setWorkflowState(e.target.value)}
+                  style={{
+                    width: '100%', padding: '0.75rem', fontSize: '1rem', borderRadius: '4px', border: '2px solid #cbd5e1',
+                    background: workflowState === 'Terminado' ? '#dcfce7' : workflowState === 'Cuadre Parcial' ? '#dbeafe' : workflowState === 'Excedente' ? '#fef08a' : 'white'
+                  }}
+                >
+                  <option value="Pendiente">⚪ Pendiente</option>
+                  <option value="En Revisión">🟡 En Revisión</option>
+                  <option value="Cuadre Parcial">🔵 Cuadre Parcial (Falta Partida)</option>
+                  <option value="Excedente">🟠 Excedente a Justificar</option>
+                  <option value="Terminado">🟢 Terminado / Cuadrado</option>
+                </select>
+              </div>
+              <button 
+                onClick={saveWorkflowState}
+                disabled={saving}
+                className="btn btn-success"
+                style={{width: '100%', fontSize: '1.1rem', padding: '0.75rem'}}
+              >
+                {saving ? 'Guardando...' : '✅ Guardar y Sellar Estado'}
+              </button>
+            </div>
+            
+            <div style={{flex: '2', minWidth: '300px'}}>
+              <label style={{display: 'block', fontWeight: 'bold', marginBottom: '0.5rem', color: '#475569'}}>📝 Nota de Justificación (Para Status Gerencial):</label>
+              <textarea 
+                value={workflowComment}
+                onChange={e => setWorkflowComment(e.target.value)}
+                placeholder="Ej. Dejo S/ 500 libres porque falta crear la partida de Muro de Contención para absorber este saldo..."
+                style={{width: '100%', minHeight: '120px', padding: '0.75rem', borderRadius: '4px', border: '1px solid #cbd5e1', resize: 'vertical'}}
+              />
+            </div>
+          </div>
 
         </div>
       )}
