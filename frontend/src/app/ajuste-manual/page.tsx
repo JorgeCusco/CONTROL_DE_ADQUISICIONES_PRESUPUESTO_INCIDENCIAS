@@ -54,7 +54,7 @@ export default function Home() {
   const [showBubble, setShowBubble] = useState(false);
 
   // Dragging states for Help Bubble
-  const [bubblePos, setBubblePos] = useState({ x: 120, y: 315 });
+  const [bubblePos, setBubblePos] = useState({ x: 121, y: 315 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
 
@@ -862,11 +862,11 @@ export default function Home() {
             return (
               <div className="metrics">
                 <div className="metric-card">
-                  <div className="metric-label">Meta Global (A Cuadrar)</div>
+                  <div className="metric-label">INSUMOS SEGÚN ADQUISICIONES</div>
                   <div className="metric-value">{globalAdquirido.toLocaleString('en-US', { minimumFractionDigits: 4, maximumFractionDigits: 4 })}</div>
                 </div>
                 <div className="metric-card">
-                  <div className="metric-label">Suma Parcial 2 (APU)</div>
+                  <div className="metric-label">SEGÚN EXPEDIENTE</div>
                   <div className="metric-value">{sumParcial2.toLocaleString('en-US', { minimumFractionDigits: 4, maximumFractionDigits: 4 })}</div>
                   <div style={{
                     fontSize: '0.9rem',

@@ -256,10 +256,16 @@ Parcial Modificado = Cantidad Modificada × Metrado Fijo
 Meta Global = Σ(Parcial Modificado) para TODOS los insumos
 ```
 
-### Adquirido (Suma de Compras)
-```
-Adquirido = Σ(Total) donde mapeo_vinculacion.compra_id = compras.id
-```
+### Flujo de Cuadre Colaborativo (State Tracking)
+Para soportar el trabajo simultáneo de 10 analistas, se utiliza una máquina de estados almacenada en `estado_cuadre_insumos`:
+1. **Auto-guardado celular**: Las compras y los APUs se guardan por fila (onBlur), sin requerir botón global.
+2. **Selección de Estado**: El analista marca el cierre de un insumo mediante los siguientes estados:
+   - `Pendiente`: Estado inicial.
+   - `En Revisión`: Alguien está analizándolo.
+   - `Cuadre Parcial`: Tiene saldo sobrante pero requiere acción futura (ej. crear partida).
+   - `Excedente`: Incidencia asignada supera la compra física (alerta gerencial).
+   - `Terminado`: Cuadre finalizado satisfactoriamente.
+3. **Notas de Justificación**: Obligatorias para cuadres parciales o excedentes. Documentan el razonamiento para el Status Gerencial.
 
 ### Cuadre (Auditoría)
 ```

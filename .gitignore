@@ -4,6 +4,12 @@
 *.csv
 *.xlsx
 ~$*.xlsx
+*.xls
+*.zip
+backup/
+DATA_LAST/
+ANALISIS_Y_PROPUESTAS/
+"Nueva carpeta/"
 
 # Dependencias root
 node_modules/
