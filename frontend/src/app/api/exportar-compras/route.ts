@@ -35,7 +35,7 @@ export async function GET() {
     const headerBg = 'FF1d4ed8';
     const headerFont = { color: { argb: 'FFFFFFFF' }, bold: true, size: 11 };
     const headerFill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: headerBg } };
-    const headerAlignment = { horizontal: 'center' as const, vertical: 'center' as const, wrapText: true };
+    const headerAlignment = { horizontal: 'center' as const, vertical: 'middle' as const, wrapText: true };
 
     // Headers
     const headers = ['ID', 'Tipo Compra', 'Número Documento', 'Año', 'Detalle', 'Unidad', 'Cantidad', 'Precio Unitario', 'Total', 'Estado', 'Vinculado A'];

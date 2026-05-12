@@ -38,7 +38,7 @@ export async function GET() {
     const headerBg = 'FF1e293b';
     const headerFont = { color: { argb: 'FFFFFFFF' }, bold: true, size: 11 };
     const headerFill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: headerBg } };
-    const headerAlignment = { horizontal: 'center' as const, vertical: 'center' as const, wrapText: true };
+    const headerAlignment = { horizontal: 'center' as const, vertical: 'middle' as const, wrapText: true };
 
     // Headers
     const headers = ['Código', 'Nombre del Insumo', 'Unidad', 'Meta (Cantidad Requerida)', 'Adquirido', 'Cantidad de Vínculos', 'Estado'];
