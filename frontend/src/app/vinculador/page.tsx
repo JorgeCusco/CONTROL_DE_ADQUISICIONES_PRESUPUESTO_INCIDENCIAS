@@ -185,7 +185,52 @@ export default function VinculadorPage() {
             </button>
             <h2 style={{ margin: 0, color: '#1e293b', fontSize: '1.25rem' }}>🔗 Vinculador — Insumos ↔ Compras</h2>
           </div>
-          <div style={{ display: 'flex', gap: '0.4rem' }}>
+          <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
+            <button
+              onClick={() => window.location.href = '/api/exportar-insumos'}
+              style={{
+                background: '#8b5cf6', color: 'white', border: 'none', padding: '0.35rem 0.75rem',
+                borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem',
+                boxShadow: '0 4px 6px -1px rgba(139, 92, 246, 0.3), 0 2px 4px -1px rgba(139, 92, 246, 0.2)',
+                transition: 'all 0.2s', fontSize: '0.8rem'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+              onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+              title="Descargar tabla de insumos del presupuesto en Excel"
+            >
+              📋 Insumos
+            </button>
+
+            <button
+              onClick={() => window.location.href = '/api/exportar-compras'}
+              style={{
+                background: '#f59e0b', color: 'white', border: 'none', padding: '0.35rem 0.75rem',
+                borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem',
+                boxShadow: '0 4px 6px -1px rgba(245, 158, 11, 0.3), 0 2px 4px -1px rgba(245, 158, 11, 0.2)',
+                transition: 'all 0.2s', fontSize: '0.8rem'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+              onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+              title="Descargar tabla de compras en Excel"
+            >
+              📦 Compras
+            </button>
+
+            <button
+              onClick={() => window.location.href = '/api/exportar-vinculos'}
+              style={{
+                background: '#10b981', color: 'white', border: 'none', padding: '0.35rem 0.75rem',
+                borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem',
+                boxShadow: '0 4px 6px -1px rgba(16, 185, 129, 0.3), 0 2px 4px -1px rgba(16, 185, 129, 0.2)',
+                transition: 'all 0.2s', fontSize: '0.8rem'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+              onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+              title="Descargar vinculaciones en CSV"
+            >
+              🔗 Vinculaciones
+            </button>
+
             {!loadingInsumos && unlinkedCount > 0 && (
               <span style={{ fontSize: '0.82rem', background: '#fef3c7', border: '1px solid #fcd34d', borderRadius: '10px', padding: '2px 10px', color: '#92400e' }}>
                 ⚠️ {unlinkedCount} sin vincular
@@ -203,53 +248,6 @@ export default function VinculadorPage() {
             )}
           </div>
         </div>
-        
-        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
-          <button
-            onClick={() => window.location.href = '/api/exportar-insumos'}
-            style={{
-              background: '#8b5cf6', color: 'white', border: 'none', padding: '0.5rem 1rem',
-              borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem',
-              boxShadow: '0 4px 6px -1px rgba(139, 92, 246, 0.3), 0 2px 4px -1px rgba(139, 92, 246, 0.2)',
-              transition: 'all 0.2s', fontSize: '0.9rem'
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
-            onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
-            title="Descargar tabla de insumos del presupuesto en Excel"
-          >
-            📋 Insumos
-          </button>
-
-          <button
-            onClick={() => window.location.href = '/api/exportar-compras'}
-            style={{
-              background: '#f59e0b', color: 'white', border: 'none', padding: '0.5rem 1rem',
-              borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem',
-              boxShadow: '0 4px 6px -1px rgba(245, 158, 11, 0.3), 0 2px 4px -1px rgba(245, 158, 11, 0.2)',
-              transition: 'all 0.2s', fontSize: '0.9rem'
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
-            onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
-            title="Descargar tabla de compras en Excel"
-          >
-            📦 Compras
-          </button>
-
-          <button
-            onClick={() => window.location.href = '/api/exportar-vinculos'}
-            style={{
-              background: '#10b981', color: 'white', border: 'none', padding: '0.5rem 1rem',
-              borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem',
-              boxShadow: '0 4px 6px -1px rgba(16, 185, 129, 0.3), 0 2px 4px -1px rgba(16, 185, 129, 0.2)',
-              transition: 'all 0.2s', fontSize: '0.9rem'
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
-            onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
-            title="Descargar vinculaciones en CSV"
-          >
-            🔗 Vinculaciones
-          </button>
-        </div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: sidebarVisible ? '280px 1fr' : '0fr 1fr', gap: '0.75rem', flex: 1, minHeight: 0, minWidth: 0, padding: '0.75rem', overflow: 'hidden', transition: 'grid-template-columns 0.3s ease' }}>
@@ -263,7 +261,7 @@ export default function VinculadorPage() {
             </span>
           </div>
 
-          <div style={{ padding: '0.55rem', borderBottom: '1px solid #e2e8f0', background: '#f8fafc', flexShrink: 0 }}>
+          <div style={{ padding: '0.75rem', borderBottom: '1px solid #e2e8f0', background: '#f8fafc', flexShrink: 0 }}>
             <input
               value={searchInsumo}
               onChange={e => setSearchInsumo(e.target.value)}
@@ -344,7 +342,7 @@ export default function VinculadorPage() {
               </div>
 
               {/* Toolbar */}
-              <div style={{ padding: '0.55rem 0.75rem', borderBottom: '1px solid #e2e8f0', background: '#f8fafc', display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', flexShrink: 0 }}>
+              <div style={{ padding: '0.75rem 0.9rem', borderBottom: '1px solid #e2e8f0', background: '#f8fafc', display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', flexShrink: 0 }}>
                 <input value={searchCompra} onChange={e => setSearchCompra(e.target.value)}
                   placeholder="Buscar en compras (ej: factura cemento)..."
                   style={{ flex: '1 1 180px', padding: '5px 8px', border: '1px solid #cbd5e1', borderRadius: '4px', fontSize: '0.82rem' }} />
