@@ -9,7 +9,6 @@ type InsumoStat = {
   meta_cantidad: number;
   linked_count: number;
   adquirido: number;
-  precio?: number;
   es_extra?: number;
   total_registros: number;
 };
@@ -62,6 +61,9 @@ export default function VinculadorPage() {
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [saving, setSaving] = useState(false);
   const [confirmUnlink, setConfirmUnlink] = useState<number | null>(null);
+  const [rowsPerPage, setRowsPerPage] = useState(100);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [sidebarVisible, setSidebarVisible] = useState(true);
 
   const loadInsumos = useCallback(() => {
     setLoadingInsumos(true);
@@ -84,9 +86,12 @@ export default function VinculadorPage() {
 
   useEffect(() => { loadInsumos(); }, [loadInsumos]);
 
+  useEffect(() => { setCurrentPage(1); }, [searchCompra, filterCompra]);
+
   const handleSelectInsumo = (codigo: string, nombre: string) => {
     setSelectedInsumoCodigo(codigo);
     setSelectedInsumoNombre(nombre);
+    setCurrentPage(1);
     // REMOVED: setSearchCompra('') to keep the search term intact when switching insumos
     // REMOVED: setFilterCompra('all') to keep filters intact
     loadCompras(codigo);
@@ -168,11 +173,19 @@ export default function VinculadorPage() {
   const extraCount = insumos.filter(i => i.es_extra === 1).length;
 
   return (
-    <div style={{ padding: '1.25rem', fontFamily: 'system-ui, sans-serif', height: 'calc(100vh - 32px)', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ marginBottom: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: '1rem', flexWrap: 'wrap' }}>
-          <h2 style={{ margin: 0, color: '#1e293b', fontSize: '1.35rem' }}>🔗 Vinculador — Insumos ↔ Compras</h2>
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
+    <div style={{ padding: 0, fontFamily: 'system-ui, sans-serif', height: '100vh', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ padding: '0.75rem 1.25rem', flexShrink: 0 }}>
+        <div style={{ marginBottom: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+            <button onClick={() => setSidebarVisible(!sidebarVisible)} title={sidebarVisible ? 'Ocultar panel lateral' : 'Mostrar panel lateral'}
+              style={{ background: 'none', border: '1px solid #cbd5e1', cursor: 'pointer', fontSize: '1rem', padding: '5px 8px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '4px', transition: 'all 0.2s', color: '#475569', position: 'relative', zIndex: 1002 }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = '#e2e8f0'; e.currentTarget.style.borderColor = '#94a3b8'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; e.currentTarget.style.borderColor = '#cbd5e1'; }}>
+              {sidebarVisible ? '◀' : '▶'}
+            </button>
+            <h2 style={{ margin: 0, color: '#1e293b', fontSize: '1.25rem' }}>🔗 Vinculador — Insumos ↔ Compras</h2>
+          </div>
+          <div style={{ display: 'flex', gap: '0.4rem' }}>
             {!loadingInsumos && unlinkedCount > 0 && (
               <span style={{ fontSize: '0.82rem', background: '#fef3c7', border: '1px solid #fcd34d', borderRadius: '10px', padding: '2px 10px', color: '#92400e' }}>
                 ⚠️ {unlinkedCount} sin vincular
@@ -191,14 +204,14 @@ export default function VinculadorPage() {
           </div>
         </div>
         
-        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
           <button
             onClick={() => window.location.href = '/api/exportar-insumos'}
             style={{
-              background: '#8b5cf6', color: 'white', border: 'none', padding: '0.6rem 1.2rem',
+              background: '#8b5cf6', color: 'white', border: 'none', padding: '0.5rem 1rem',
               borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem',
               boxShadow: '0 4px 6px -1px rgba(139, 92, 246, 0.3), 0 2px 4px -1px rgba(139, 92, 246, 0.2)',
-              transition: 'all 0.2s', fontSize: '0.95rem'
+              transition: 'all 0.2s', fontSize: '0.9rem'
             }}
             onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
             onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
@@ -210,10 +223,10 @@ export default function VinculadorPage() {
           <button
             onClick={() => window.location.href = '/api/exportar-compras'}
             style={{
-              background: '#f59e0b', color: 'white', border: 'none', padding: '0.6rem 1.2rem',
+              background: '#f59e0b', color: 'white', border: 'none', padding: '0.5rem 1rem',
               borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem',
               boxShadow: '0 4px 6px -1px rgba(245, 158, 11, 0.3), 0 2px 4px -1px rgba(245, 158, 11, 0.2)',
-              transition: 'all 0.2s', fontSize: '0.95rem'
+              transition: 'all 0.2s', fontSize: '0.9rem'
             }}
             onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
             onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
@@ -225,10 +238,10 @@ export default function VinculadorPage() {
           <button
             onClick={() => window.location.href = '/api/exportar-vinculos'}
             style={{
-              background: '#10b981', color: 'white', border: 'none', padding: '0.6rem 1.2rem',
+              background: '#10b981', color: 'white', border: 'none', padding: '0.5rem 1rem',
               borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem',
               boxShadow: '0 4px 6px -1px rgba(16, 185, 129, 0.3), 0 2px 4px -1px rgba(16, 185, 129, 0.2)',
-              transition: 'all 0.2s', fontSize: '0.95rem'
+              transition: 'all 0.2s', fontSize: '0.9rem'
             }}
             onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
             onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
@@ -239,10 +252,10 @@ export default function VinculadorPage() {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: '1rem', flex: 1, minHeight: 0 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: sidebarVisible ? '280px 1fr' : '0fr 1fr', gap: '0.75rem', flex: 1, minHeight: 0, minWidth: 0, padding: '0.75rem', overflow: 'hidden', transition: 'grid-template-columns 0.3s ease' }}>
 
         {/* ── PANEL IZQUIERDO: Insumos ── */}
-        <div style={{ border: '1px solid #cbd5e1', borderRadius: '8px', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: 'white' }}>
+        <div style={{ border: '1px solid #cbd5e1', borderRadius: '8px', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: 'white', minWidth: 0, visibility: sidebarVisible ? 'visible' : 'hidden' }}>
           <div style={{ background: '#1e293b', color: 'white', padding: '0.65rem 0.9rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
             <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>Insumos del Presupuesto</span>
             <span style={{ fontSize: '0.72rem', background: 'rgba(255,255,255,0.18)', padding: '2px 8px', borderRadius: '10px' }}>
@@ -374,7 +387,10 @@ export default function VinculadorPage() {
                       {filteredCompras.length === 0 && (
                         <tr><td colSpan={9} style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8' }}>Sin resultados</td></tr>
                       )}
-                      {filteredCompras.slice(0, 150).map((c, index) => {
+                      {(() => {
+                        const start = (currentPage - 1) * rowsPerPage;
+                        const end = start + rowsPerPage;
+                        return filteredCompras.slice(start, end).map((c, index) => {
                         const isSel = selected.has(c.id);
                         return (
                           <tr key={`${c.id}-${index}`}
@@ -431,16 +447,43 @@ export default function VinculadorPage() {
                             </td>
                           </tr>
                         );
-                      })}
-                      {filteredCompras.length > 150 && (
-                        <tr>
-                          <td colSpan={9} style={{ padding: '1rem', textAlign: 'center', background: '#f8fafc', color: '#64748b', fontSize: '0.8rem', borderTop: '1px dashed #cbd5e1' }}>
-                            Mostrando los primeros 150 resultados de {filteredCompras.length}. Usa el buscador para encontrar más compras.
-                          </td>
-                        </tr>
-                      )}
+                        });
+                      })()}
                     </tbody>
                   </table>
+                </div>
+              )}
+
+              {/* Footer de Paginación */}
+              {!loadingCompras && selectedInsumoCodigo && filteredCompras.length > 0 && (
+                <div style={{ borderTop: '1px solid #e2e8f0', background: '#f8fafc', padding: '0.4rem 0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', fontSize: '0.8rem', color: '#475569', flexShrink: 0 }}>
+                  <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                    <label style={{ fontWeight: 500 }}>Mostrar:</label>
+                    <select value={rowsPerPage} onChange={(e) => { setRowsPerPage(Number(e.target.value)); setCurrentPage(1); }}
+                      style={{ padding: '3px 6px', border: '1px solid #cbd5e1', borderRadius: '3px', background: '#fff', color: '#475569', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 500 }}>
+                      <option value={100}>100 rows</option>
+                      <option value={500}>500 rows</option>
+                      <option value={1000}>1000 rows</option>
+                    </select>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '0.3rem', alignItems: 'center' }}>
+                    <button onClick={() => setCurrentPage(Math.max(1, currentPage - 1))} disabled={currentPage === 1}
+                      style={{ padding: '2px 5px', border: '1px solid #cbd5e1', borderRadius: '2px', background: currentPage === 1 ? '#f1f5f9' : '#fff', cursor: currentPage === 1 ? 'not-allowed' : 'pointer', color: currentPage === 1 ? '#cbd5e1' : '#475569', fontSize: '0.7rem', fontWeight: 500 }}>
+                      ◀
+                    </button>
+                    <span style={{ minWidth: '50px', textAlign: 'center', fontSize: '0.75rem' }}>
+                      Página <span style={{ fontWeight: 600 }}>{currentPage}</span> de <span style={{ fontWeight: 600 }}>{Math.ceil(filteredCompras.length / rowsPerPage)}</span>
+                    </span>
+                    <button onClick={() => setCurrentPage(Math.min(Math.ceil(filteredCompras.length / rowsPerPage), currentPage + 1))} disabled={currentPage === Math.ceil(filteredCompras.length / rowsPerPage)}
+                      style={{ padding: '2px 5px', border: '1px solid #cbd5e1', borderRadius: '2px', background: currentPage === Math.ceil(filteredCompras.length / rowsPerPage) ? '#f1f5f9' : '#fff', cursor: currentPage === Math.ceil(filteredCompras.length / rowsPerPage) ? 'not-allowed' : 'pointer', color: currentPage === Math.ceil(filteredCompras.length / rowsPerPage) ? '#cbd5e1' : '#475569', fontSize: '0.7rem', fontWeight: 500 }}>
+                      ▶
+                    </button>
+                  </div>
+
+                  <div style={{ fontSize: '0.75rem', fontWeight: 500 }}>
+                    Total: <span style={{ fontWeight: 600 }}>{filteredCompras.length}</span> registros
+                  </div>
                 </div>
               )}
             </>
@@ -450,3 +493,4 @@ export default function VinculadorPage() {
     </div>
   );
 }
+

@@ -17,7 +17,7 @@ export async function GET(request: Request) {
       // Return insumos for a specific partida
       const query = `
         SELECT a.id, a.descripcion_insumo as descripcion, a.unidad, a.cantidad_c as incidencia, 
-               0 as cantidad_adquirida, (a.cantidad_c * p.cantidad_p) as cantidad_modificada 
+               0 as cantidad_adquirida, (a.cantidad_c * COALESCE(p.cantidad_p, 1)) as cantidad_modificada 
         FROM acus a
         JOIN partidas_p p ON a.item_partida = p.item
         WHERE a.item_partida = $1 

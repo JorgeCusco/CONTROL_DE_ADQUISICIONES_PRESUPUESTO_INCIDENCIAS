@@ -36,9 +36,9 @@ export async function GET() {
 
     // Header styling
     const headerBg = 'FF1e293b';
-    const headerFont = { color: { argb: 'FFFFFFFF' }, bold: true, size: 11 };
+    const headerFont = { color: 'FFFFFFFF', bold: true, size: 11 };
     const headerFill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: headerBg } };
-    const headerAlignment = { horizontal: 'center' as const, vertical: 'middle' as const, wrapText: true };
+    const headerAlignment = { horizontal: 'center' as const, vertical: 'center' as const, wrapText: true };
 
     // Headers
     const headers = ['Código', 'Nombre del Insumo', 'Unidad', 'Meta (Cantidad Requerida)', 'Adquirido', 'Cantidad de Vínculos', 'Estado'];
@@ -84,13 +84,13 @@ export async function GET() {
       const estadoCell = dataRow.getCell(7);
       if (row.estado === 'VINCULADO') {
         estadoCell.fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'FFDCFCE7' } };
-        estadoCell.font = { color: { argb: 'FF166534' }, bold: true };
+        estadoCell.font = { color: 'FF166534', bold: true };
       } else {
         estadoCell.fill = { type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: 'FFFEF3C7' } };
-        estadoCell.font = { color: { argb: 'FF92400E' }, bold: true };
+        estadoCell.font = { color: 'FF92400E', bold: true };
       }
 
-      dataRow.alignment = { vertical: 'middle' as const };
+      dataRow.alignment = { vertical: 'center' as const };
     });
 
     // Freeze header

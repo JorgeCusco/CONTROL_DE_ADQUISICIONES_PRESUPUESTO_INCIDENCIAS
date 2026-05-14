@@ -98,13 +98,23 @@ export default function ControlInsumos() {
     fetch('/api/partidas')
       .then(res => res.json())
       .then(data => {
-        setPartidas(data);
-        setFilteredPartidas(data);
+        const partidList = Array.isArray(data) ? data : [];
+        setPartidas(partidList);
+        setFilteredPartidas(partidList);
+      })
+      .catch(err => {
+        console.error('Error loading partidas:', err);
+        setPartidas([]);
+        setFilteredPartidas([]);
       });
   }, []);
 
   // 2. Filter partidas on search query change
   useEffect(() => {
+    if (!partidas || partidas.length === 0) {
+      setFilteredPartidas([]);
+      return;
+    }
     if (!searchQuery.trim()) {
       setFilteredPartidas(partidas);
       return;
