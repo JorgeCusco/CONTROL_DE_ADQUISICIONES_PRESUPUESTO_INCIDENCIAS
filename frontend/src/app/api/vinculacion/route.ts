@@ -50,11 +50,7 @@ export async function GET(request: Request) {
           c.unidad_und as unidad, 
           c.cantidad_und as cantidad, 
           (SELECT COUNT(*) FROM mapeo_vinculacion m WHERE m.compra_id = c.id) as linked_count,
-          COALESCE(
-            (SELECT ir.descripcion_insumo FROM mapeo_vinculacion m2 JOIN insumos_resumen ir ON m2.codigo_insumo = ir.codigo_insumo WHERE m2.compra_id = c.id LIMIT 1),
-            (SELECT ip.descripcion FROM mapeo_vinculacion m2 JOIN insumos_p ip ON m2.codigo_insumo = ip.codigo WHERE m2.compra_id = c.id LIMIT 1),
-            'Insumo Especial (' || (SELECT m2.codigo_insumo FROM mapeo_vinculacion m2 WHERE m2.compra_id = c.id LIMIT 1) || ')'
-          ) as vinculado_a,
+          (SELECT ir.descripcion_insumo FROM mapeo_vinculacion m2 JOIN insumos_resumen ir ON m2.codigo_insumo = ir.codigo_insumo WHERE m2.compra_id = c.id LIMIT 1) as vinculado_a,
           c.num_compra,
           c.tipo_compra,
           c.anio
@@ -130,11 +126,7 @@ export async function GET(request: Request) {
               WHEN EXISTS (SELECT 1 FROM mapeo_vinculacion m2 WHERE m2.compra_id = c.id) THEN 'bloqueado'
               ELSE 'disponible'
           END as estado,
-          COALESCE(
-              (SELECT ir.descripcion_insumo FROM mapeo_vinculacion m2 JOIN insumos_resumen ir ON m2.codigo_insumo = ir.codigo_insumo WHERE m2.compra_id = c.id LIMIT 1),
-              (SELECT ip.descripcion FROM mapeo_vinculacion m2 JOIN insumos_p ip ON m2.codigo_insumo = ip.codigo WHERE m2.compra_id = c.id LIMIT 1),
-              'Insumo Especial (' || (SELECT m2.codigo_insumo FROM mapeo_vinculacion m2 WHERE m2.compra_id = c.id LIMIT 1) || ')'
-          ) as vinculado_a
+          (SELECT ir.descripcion_insumo FROM mapeo_vinculacion m2 JOIN insumos_resumen ir ON m2.codigo_insumo = ir.codigo_insumo WHERE m2.compra_id = c.id LIMIT 1) as vinculado_a
         FROM compras_c c
         ORDER BY c.id DESC
       `, [insumo]);
