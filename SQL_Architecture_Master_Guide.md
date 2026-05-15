@@ -24,38 +24,44 @@ Contiene las partidas oficiales del presupuesto del proyecto.
 
 ### 2. `insumos_p` (Catálogo de Insumos - Inmutable)
 Catálogo unificado de todos los recursos (mano de obra, materiales, equipos) presupuestados.
-*   **`codigo_insumo`** `TEXT` (PK): Código único de insumo (ej. `0101010001`).
-*   **`descripcion_insumo`** `TEXT`: Nombre oficial del recurso.
+*   **`codigo`** `TEXT` (PK): Código único de insumo (ej. `0101010001`).
+*   **`descripcion`** `TEXT`: Nombre oficial del recurso.
 *   **`unidad`** `TEXT`: Unidad de medida estándar.
-*   **`cantidad_p`** `NUMERIC`: Cantidad total presupuestada para toda la obra.
-*   **`costo_p`** `NUMERIC`: Precio unitario referencial del expediente.
+*   **`cantidad_insumo_p`** `NUMERIC`: Cantidad total presupuestada.
+*   **`costo_p`** `NUMERIC`: Precio unitario referencial.
 *   **`total_p`** `NUMERIC`: Parcial total presupuestado.
 
 ### 3. `acus` (APU Desglosado - Editable)
 Desglose detallado de los Análisis de Precios Unitarios (APU). Aquí se modifican las incidencias para lograr el cuadre global.
 *   **`id`** `SERIAL` (PK): Identificador único interno.
 *   **`item_partida`** `TEXT` (FK `partidas_p`): Enlace a la partida asociada.
-*   **`codigo_insumo`** `TEXT` (FK `insumos_p`): Código del insumo componente.
+*   **`tipo`** `TEXT`: Categoría del insumo (Mano de Obra, Material, etc.).
+*   **`codigo_insumo`** `TEXT`: Código del insumo componente.
 *   **`descripcion_insumo`** `TEXT`: Nombre del insumo dentro del APU.
 *   **`unidad`** `TEXT`: Unidad de medida.
+*   **`recursos`** `NUMERIC`: Cuadrilla o cantidad base.
 *   **`cantidad_p`** `NUMERIC`: Cantidad/Incidencia presupuestada original.
+*   **`precio_p`** `NUMERIC`: Precio unitario presupuestado.
 *   **`parcial_p`** `NUMERIC`: Costo parcial original.
 *   **`cantidad_c`** `NUMERIC`: **[EDITABLE]** Cantidad/Incidencia modificada por el usuario (APU 2).
-*   **`rendimiento`** `NUMERIC`: Rendimiento diario de la partida.
+*   **`precio_c`** `NUMERIC`: Precio unitario modificado.
+*   **`parcial_c`** `NUMERIC`: Parcial modificado.
 
 ### 4. `compras_c` (Ejecución de Compras - Transaccional)
 Registro físico de las adquisiciones realizadas en obra.
 *   **`id`** `SERIAL` (PK): Identificador de la compra.
-*   **`num_compra`** `TEXT`: Número de orden de compra o documento.
 *   **`anio`** `TEXT`: Año del ejercicio.
+*   **`componente`** `TEXT`: Componente o proyecto asociado.
 *   **`detalle`** `TEXT`: Descripción del recurso adquirido.
 *   **`unidad`** `TEXT`: Unidad de medida de la orden de compra.
 *   **`cantidad_c`** `NUMERIC`: Cantidad original facturada.
 *   **`precio_unit_c`** `NUMERIC`: Precio unitario original.
 *   **`total_c`** `NUMERIC`: Importe total de la compra.
-*   **`origen`** `TEXT`: Almacén, caja chica, etc.
-*   **`unidad_und`** `TEXT` (Editable): Unidad homologada/normalizada por el usuario para cuadrar con el presupuesto.
-*   **`cantidad_und`** `TEXT` (Editable): Cantidad convertida en base a la unidad normalizada.
+*   **`tipo_compra`** `TEXT`: Tipo de documento (OC, Caja Chica, etc.).
+*   **`num_compra`** `TEXT`: Número de orden de compra o documento.
+*   **`completo`** `TEXT`: Información adicional.
+*   **`unidad_und`** `TEXT` (Editable): Unidad homologada por el usuario.
+*   **`cantidad_und`** `NUMERIC` (Editable): Cantidad convertida.
 *   **`precio_und`** `NUMERIC` (Editable): Precio unitario recalculado.
 
 ### 5. `mapeo_vinculacion` (Vinculación - Transaccional)
@@ -77,26 +83,22 @@ Tabla independiente para gestionar el estado de cuadre por insumo. Evita alterar
 ## 👁️ Vistas de Base de Datos (Views)
 
 ### `insumos_resumen`
-Une el catálogo de `insumos_p` con los totales de compras vinculadas en `mapeo_vinculacion` para entregar balances y saldos en tiempo real:
+Esta vista es el motor de cálculo del presupuesto. Calcula las cantidades totales requeridas cruzando los APU (`acus`) con los metrados de las partidas (`partidas_p`):
 
 ```sql
 CREATE OR REPLACE VIEW insumos_resumen AS
-SELECT 
-    i.codigo_insumo,
-    i.descripcion_insumo,
-    i.unidad,
-    i.cantidad_p,
-    i.costo_p,
-    i.total_p,
-    COALESCE(e.estado, 'Pendiente') AS estado,
-    e.comentario,
-    COALESCE(SUM(COALESCE(c.cantidad_und, c.cantidad_c)), 0) AS total_adquirido,
-    (i.cantidad_p - COALESCE(SUM(COALESCE(c.cantidad_und, c.cantidad_c)), 0)) AS saldo
-FROM insumos_p i
-LEFT JOIN mapeo_vinculacion m ON i.codigo_insumo = m.codigo_insumo
-LEFT JOIN compras_c c ON m.compra_id = c.id
-LEFT JOIN estado_cuadre_insumos e ON i.codigo_insumo = e.codigo_insumo
-GROUP BY i.codigo_insumo, i.descripcion_insumo, i.unidad, i.cantidad_p, i.costo_p, i.total_p, e.estado, e.comentario;
+ SELECT a.codigo_insumo,
+    max(a.descripcion_insumo)::character varying AS descripcion_insumo,
+    max(a.unidad::text)::character varying AS unidad,
+    sum(a.cantidad_p * COALESCE(p.cantidad_p, 0::numeric)) AS cantidad_requerida_p,
+    max(a.precio_p) AS precio_p,
+    sum(COALESCE(a.cantidad_c, a.cantidad_p) * COALESCE(p.cantidad_p, 0::numeric)) AS cantidad_requerida_c,
+    COALESCE(e.estado, 'Pendiente'::text) AS estado,
+    max(e.comentario) AS comentario
+   FROM acus a
+     LEFT JOIN partidas_p p ON a.item_partida::text = p.item::text
+     LEFT JOIN estado_cuadre_insumos e ON a.codigo_insumo::text = e.codigo_insumo::text
+  GROUP BY a.codigo_insumo, e.estado;
 ```
 
 ---

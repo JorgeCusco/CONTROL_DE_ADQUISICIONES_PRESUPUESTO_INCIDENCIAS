@@ -12,13 +12,13 @@ export default function LayoutClient({
 
   return (
     <div className="layout-wrapper">
-      <button 
-        onClick={() => setSidebarLeftVisible(!sidebarLeftVisible)} 
+      <button
+        onClick={() => setSidebarLeftVisible(!sidebarLeftVisible)}
         title={sidebarLeftVisible ? 'Ocultar proyecto' : 'Mostrar proyecto'}
-        style={{ 
-          position: 'fixed', 
-          top: '12px', 
-          left: sidebarLeftVisible ? '268px' : '8px',
+        style={{
+          position: 'fixed',
+          top: '12px',
+          left: sidebarLeftVisible ? '78px' : '8px',
           background: '#1F3864',
           border: '1px solid rgba(255,255,255,0.2)',
           color: 'white',
@@ -41,24 +41,20 @@ export default function LayoutClient({
         {sidebarLeftVisible ? '◀' : '▶'}
       </button>
 
-      <aside className="sidebar" style={{ 
-        width: sidebarLeftVisible ? '260px' : '0px',
+      <aside className="sidebar" style={{
+        width: sidebarLeftVisible ? '70px' : '0px',
         overflow: 'hidden',
         transition: 'width 0.3s ease'
       }}>
         <div className="sidebar-header">
-          <h2>🏗️ Proyecto Rado</h2>
+          <h2>🏗️</h2>
         </div>
         <nav className="sidebar-nav">
-          <Link href="/">📊 Dashboard</Link>
-          <Link href="/control-insumos">⚙️ Control Insumos</Link>
-          <Link href="/vinculador">🔗 Vinculador</Link>
-          <Link href="/ajuste-manual">⚖️ Ajuste Manual</Link>
+          <Link href="/"><span className="nav-icon">📊</span><span className="nav-label">Dashboard</span></Link>
+          <Link href="/control-insumos"><span className="nav-icon">⚙️</span><span className="nav-label">Control Insumos</span></Link>
+          <Link href="/vinculador"><span className="nav-icon">🔗</span><span className="nav-label">Vinculador</span></Link>
+          <Link href="/ajuste-manual"><span className="nav-icon">⚖️</span><span className="nav-label">Ajuste Manual</span></Link>
         </nav>
-        <div className="sidebar-info">
-          💡 <strong>Proyecto:</strong> 7_Insumos_rado<br/><br/>
-          👤 <strong>Usuario:</strong> Equipo Presupuestos OFI
-        </div>
       </aside>
 
       <div className="main-content">
