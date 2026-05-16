@@ -18,6 +18,7 @@ export default function LayoutClient({
           <Link href="/control-insumos">⚙️ Control Insumos</Link>
           <Link href="/vinculador">🔗 Vinculador</Link>
           <Link href="/ajuste-manual">⚖️ Ajuste Manual</Link>
+          <Link href="/editor-maestro">🛠️ Editor Maestro</Link>
         </nav>
         <div className="sidebar-info">
           💡 <strong>Proyecto:</strong> 7_Insumos_rado<br/><br/>
