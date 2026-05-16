@@ -41,11 +41,7 @@ export async function POST(request: Request) {
     const check = await client.query('SELECT codigo FROM insumos_p WHERE codigo = $1', [codigo]);
     
     if (check.rows.length > 0) {
-      await client.query(`
-        UPDATE insumos_p 
-        SET descripcion = $1, unidad = $2, costo_p = $3
-        WHERE codigo = $4
-      `, [descripcion, unidad, costo_p || 0, codigo]);
+      return NextResponse.json({ error: 'El código de insumo ya existe' }, { status: 409 });
     } else {
       await client.query(`
         INSERT INTO insumos_p (codigo, descripcion, unidad, costo_p)

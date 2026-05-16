@@ -190,19 +190,37 @@ export default function EditorMaestro() {
   };
 
   const handleCreateInsumo = async () => {
+    if (!newInsumoData.codigo || !newInsumoData.descripcion) {
+      alert('El código y la descripción son obligatorios.');
+      return;
+    }
+    
+    // Validación inmediata en el Frontend
+    if (insumosList.some(i => i.codigo === newInsumoData.codigo)) {
+      alert('⚠️ ERROR: Ya existe un insumo con este Código en la base de datos. Por favor, usa un código distinto o busca el existente.');
+      return;
+    }
+
     try {
       const res = await fetch('/api/maestro/insumos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newInsumoData)
       });
+      
       if (res.ok) {
-        alert('Insumo creado!');
+        alert('¡Insumo creado con éxito!');
         setShowNewInsumo(false);
+        setNewInsumoData({ codigo: '', descripcion: '', unidad: '', costo_p: 0 }); // Limpiar
         fetchInsumos(); // Refresh list
+      } else if (res.status === 409) {
+        alert('⚠️ ERROR: El código de insumo ya está registrado (Detectado por el servidor).');
+      } else {
+        alert('Hubo un error al crear el insumo.');
       }
     } catch (err) {
       console.error(err);
+      alert('Error de conexión.');
     }
   };
 
