@@ -7,6 +7,8 @@ type Partida = {
   descripcion: string;
   unidad: string;
   cantidad_p: number;
+  precio_unitario_p?: number;
+  total_p?: number;
 };
 
 type Insumo = {
@@ -43,6 +45,10 @@ export default function EditorMaestro() {
   // Modal Nuevo Insumo
   const [showNewInsumo, setShowNewInsumo] = useState(false);
   const [newInsumoData, setNewInsumoData] = useState({ codigo: '', descripcion: '', unidad: '', costo_p: 0 });
+
+  // Modal Nueva Partida
+  const [showNewPartida, setShowNewPartida] = useState(false);
+  const [newPartidaData, setNewPartidaData] = useState({ item: '', descripcion: '', unidad: 'UND', cantidad_p: 1 });
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -155,18 +161,31 @@ export default function EditorMaestro() {
   };
 
   const handleCreatePartida = async () => {
-    const item = prompt('Ingrese el nuevo Item de Partida (Ej: 01.01.01):');
-    if (!item) return;
-    const descripcion = prompt('Ingrese la descripción de la partida:');
+    if (!newPartidaData.item || !newPartidaData.descripcion) {
+      alert('El Item y la Descripción son obligatorios.');
+      return;
+    }
     
     try {
       const res = await fetch('/api/maestro/partidas', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ item, descripcion: descripcion || '', unidad: 'UND', cantidad_p: 1, precio_unitario_p: 0, total_p: 0, rendimiento_p: '' })
+        body: JSON.stringify({ 
+          item: newPartidaData.item, 
+          descripcion: newPartidaData.descripcion, 
+          unidad: newPartidaData.unidad, 
+          cantidad_p: newPartidaData.cantidad_p, 
+          precio_unitario_p: 0, 
+          total_p: 0, 
+          rendimiento_p: '' 
+        })
       });
       if (res.ok) {
+        setShowNewPartida(false);
+        setNewPartidaData({ item: '', descripcion: '', unidad: 'UND', cantidad_p: 1 });
         fetchPartidas();
+      } else {
+        alert('Hubo un error al crear la partida.');
       }
     } catch (e) {
       console.error(e);
@@ -211,7 +230,7 @@ export default function EditorMaestro() {
         <div style={{ padding: '15px', borderBottom: '1px solid #e2e8f0', background: '#1e293b', color: 'white', borderRadius: '8px 8px 0 0' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h2 style={{ margin: 0, fontSize: '1.2rem' }}>📚 Partidas</h2>
-            <button onClick={handleCreatePartida} style={{ background: '#3b82f6', color: 'white', border: 'none', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }}>+ Nueva</button>
+            <button onClick={() => setShowNewPartida(true)} style={{ background: '#3b82f6', color: 'white', border: 'none', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }}>+ Nueva</button>
           </div>
           <input 
             type="text" 
@@ -248,9 +267,17 @@ export default function EditorMaestro() {
       <div style={{ flex: 1, background: 'white', borderRadius: '8px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', display: 'flex', flexDirection: 'column' }}>
         {selectedPartida ? (
           <>
-            <div style={{ padding: '20px', borderBottom: '1px solid #e2e8f0' }}>
-              <h1 style={{ margin: 0, fontSize: '1.5rem', color: '#1e293b' }}>{selectedPartida.item} - {selectedPartida.descripcion}</h1>
-              <p style={{ margin: '5px 0 0 0', color: '#64748b' }}>Unidad: {selectedPartida.unidad} | Metrado: {selectedPartida.cantidad_p}</p>
+            <div style={{ padding: '20px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <h1 style={{ margin: 0, fontSize: '1.5rem', color: '#1e293b' }}>{selectedPartida.item} - {selectedPartida.descripcion}</h1>
+                <p style={{ margin: '5px 0 0 0', color: '#64748b' }}>
+                  Unidad: <strong>{selectedPartida.unidad}</strong> | Metrado: <strong>{selectedPartida.cantidad_p}</strong>
+                </p>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: '1.2rem', color: '#1e293b', fontWeight: 'bold' }}>S/ {(acus.reduce((acc, curr) => acc + (curr.cantidad_p * curr.precio_p), 0)).toFixed(2)} <span style={{fontSize: '0.9rem', color: '#64748b', fontWeight: 'normal'}}>/ {selectedPartida.unidad}</span></div>
+                <div style={{ fontSize: '1rem', color: '#10b981', fontWeight: 'bold' }}>Total: S/ {(acus.reduce((acc, curr) => acc + (curr.cantidad_p * curr.precio_p), 0) * selectedPartida.cantidad_p).toFixed(2)}</div>
+              </div>
             </div>
             
             <div style={{ padding: '20px', flex: 1, overflowY: 'auto' }}>
@@ -381,6 +408,54 @@ export default function EditorMaestro() {
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '20px' }}>
               <button onClick={() => setShowNewInsumo(false)} style={{ padding: '8px 12px', border: '1px solid #cbd5e1', background: 'white', borderRadius: '4px', cursor: 'pointer' }}>Cancelar</button>
               <button onClick={handleCreateInsumo} style={{ padding: '8px 12px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Crear Insumo</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Modal Nueva Partida */}
+      {showNewPartida && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div style={{ background: 'white', padding: '20px', borderRadius: '8px', width: '400px' }}>
+            <h2 style={{ marginTop: 0 }}>Crear Nueva Partida</h2>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div>
+                <label style={{ fontSize: '0.8rem', color: '#64748b' }}>Item</label>
+                <input 
+                  type="text" placeholder="Ej: 01.01.01" value={newPartidaData.item}
+                  onChange={e => setNewPartidaData({...newPartidaData, item: e.target.value})}
+                  style={{ width: '100%', padding: '8px', border: '1px solid #cbd5e1', borderRadius: '4px' }}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: '0.8rem', color: '#64748b' }}>Descripción</label>
+                <input 
+                  type="text" placeholder="Descripción de la partida..." value={newPartidaData.descripcion}
+                  onChange={e => setNewPartidaData({...newPartidaData, descripcion: e.target.value})}
+                  style={{ width: '100%', padding: '8px', border: '1px solid #cbd5e1', borderRadius: '4px' }}
+                />
+              </div>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <div style={{ flex: 1 }}>
+                  <label style={{ fontSize: '0.8rem', color: '#64748b' }}>Unidad</label>
+                  <input 
+                    type="text" placeholder="Ej: m2, m3, glb" value={newPartidaData.unidad}
+                    onChange={e => setNewPartidaData({...newPartidaData, unidad: e.target.value})}
+                    style={{ width: '100%', padding: '8px', border: '1px solid #cbd5e1', borderRadius: '4px' }}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={{ fontSize: '0.8rem', color: '#64748b' }}>Metrado (Cantidad)</label>
+                  <input 
+                    type="number" step="0.01" placeholder="Ej: 150.5" value={newPartidaData.cantidad_p}
+                    onChange={e => setNewPartidaData({...newPartidaData, cantidad_p: parseFloat(e.target.value)})}
+                    style={{ width: '100%', padding: '8px', border: '1px solid #cbd5e1', borderRadius: '4px' }}
+                  />
+                </div>
+              </div>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '20px' }}>
+              <button onClick={() => setShowNewPartida(false)} style={{ padding: '8px 12px', border: '1px solid #cbd5e1', background: 'white', borderRadius: '4px', cursor: 'pointer' }}>Cancelar</button>
+              <button onClick={handleCreatePartida} style={{ padding: '8px 12px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Crear Partida</button>
             </div>
           </div>
         </div>

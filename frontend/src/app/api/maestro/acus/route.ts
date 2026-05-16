@@ -59,6 +59,15 @@ export async function POST(request: Request) {
         ]);
       }
 
+      // Automatically calculate and update the Unit Price and Total in partidas_p
+      await client.query(`
+        UPDATE partidas_p
+        SET 
+          precio_unitario_p = (SELECT COALESCE(SUM(parcial_p), 0) FROM acus WHERE item_partida = $1),
+          total_p = cantidad_p * (SELECT COALESCE(SUM(parcial_p), 0) FROM acus WHERE item_partida = $1)
+        WHERE item = $1
+      `, [partida]);
+
       await client.query('COMMIT');
     } catch (e) {
       await client.query('ROLLBACK');
