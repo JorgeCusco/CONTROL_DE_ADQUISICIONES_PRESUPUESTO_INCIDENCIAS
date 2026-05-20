@@ -190,10 +190,10 @@ export default function VinculadorPage() {
             <button
               onClick={() => window.location.href = '/api/exportar-insumos'}
               style={{
-                background: '#8b5cf6', color: 'white', border: 'none', padding: '0.35rem 0.75rem',
+                background: '#8b5cf6', color: 'white', border: 'none', padding: '0.5rem 1rem',
                 borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem',
                 boxShadow: '0 4px 6px -1px rgba(139, 92, 246, 0.3), 0 2px 4px -1px rgba(139, 92, 246, 0.2)',
-                transition: 'all 0.2s', fontSize: '0.8rem'
+                transition: 'all 0.2s', fontSize: '0.85rem'
               }}
               onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
               onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
@@ -205,10 +205,10 @@ export default function VinculadorPage() {
             <button
               onClick={() => window.location.href = '/api/exportar-compras'}
               style={{
-                background: '#f59e0b', color: 'white', border: 'none', padding: '0.35rem 0.75rem',
+                background: '#f59e0b', color: 'white', border: 'none', padding: '0.5rem 1rem',
                 borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem',
                 boxShadow: '0 4px 6px -1px rgba(245, 158, 11, 0.3), 0 2px 4px -1px rgba(245, 158, 11, 0.2)',
-                transition: 'all 0.2s', fontSize: '0.8rem'
+                transition: 'all 0.2s', fontSize: '0.85rem'
               }}
               onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
               onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
@@ -220,10 +220,10 @@ export default function VinculadorPage() {
             <button
               onClick={() => window.location.href = '/api/exportar-vinculos'}
               style={{
-                background: '#10b981', color: 'white', border: 'none', padding: '0.35rem 0.75rem',
+                background: '#10b981', color: 'white', border: 'none', padding: '0.5rem 1rem',
                 borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem',
                 boxShadow: '0 4px 6px -1px rgba(16, 185, 129, 0.3), 0 2px 4px -1px rgba(16, 185, 129, 0.2)',
-                transition: 'all 0.2s', fontSize: '0.8rem'
+                transition: 'all 0.2s', fontSize: '0.85rem'
               }}
               onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
               onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
@@ -296,9 +296,8 @@ export default function VinculadorPage() {
                       <span style={{ fontSize: '0.7rem', padding: '1px 6px', borderRadius: '10px', whiteSpace: 'nowrap', background: isLinked ? '#dcfce7' : '#fee2e2', color: isLinked ? '#166534' : '#dc2626', fontWeight: 600 }}>
                         {isLinked ? `🔗 ${ins.linked_count}` : '⬜ 0'}
                       </span>
-                      <div style={{ fontSize: '0.65rem', color: '#64748b', textAlign: 'right' }}>
-                        Precio:<br/>
-                        <span style={{fontWeight: 600}}>S/ {Number(ins.precio || 0).toFixed(2)}</span>
+                      <div style={{ fontSize: '0.7rem', color: '#64748b', textAlign: 'right', fontWeight: 600 }}>
+                        S/ {Number(ins.precio || 0).toFixed(2)}
                       </div>
                     </div>
                   </div>
@@ -322,9 +321,9 @@ export default function VinculadorPage() {
           ) : (
             <>
               {/* Header */}
-              <div style={{ background: '#1d4ed8', color: 'white', padding: '0.65rem 1rem', flexShrink: 0 }}>
+              <div style={{ background: '#1d4ed8', color: 'white', padding: '0.85rem 1.25rem', flexShrink: 0 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
-                  <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>{selectedInsumoNombre}</span>
+                  <span style={{ fontWeight: 700, fontSize: '1rem' }}>{selectedInsumoNombre}</span>
                   <div style={{ display: 'flex', gap: '0.4rem', fontSize: '0.72rem' }}>
                     <span style={{ background: '#dcfce7', color: '#166534', padding: '2px 8px', borderRadius: '10px', fontWeight: 600 }}>✅ {vinculadoCount}</span>
                     <span style={{ background: '#f1f5f9', color: '#475569', padding: '2px 8px', borderRadius: '10px' }}>⬜ {disponibleCount}</span>
@@ -351,7 +350,7 @@ export default function VinculadorPage() {
                   {(['all', 'vinculado', 'disponible', 'bloqueado'] as const).map(f => (
                     <button key={f} onClick={() => setFilterCompra(f)}
                       style={{ padding: '4px 9px', fontSize: '0.7rem', border: '1px solid #cbd5e1', borderRadius: '4px', cursor: 'pointer', fontWeight: filterCompra === f ? 700 : 400, background: filterCompra === f ? '#1d4ed8' : '#fff', color: filterCompra === f ? 'white' : '#64748b', whiteSpace: 'nowrap' }}>
-                      {f === 'all' ? 'Todos' : f === 'vinculado' ? '✅ Vinc.' : f === 'disponible' ? '⬜ Disp.' : '🔒 Bloq.'}
+                      {f === 'all' ? 'Todos' : f === 'vinculado' ? '✅ Vinculado' : f === 'disponible' ? '⬜ Disponible' : '🔒 Bloqueado'}
                     </button>
                   ))}
                 </div>
@@ -391,9 +390,11 @@ export default function VinculadorPage() {
                         const end = start + rowsPerPage;
                         return filteredCompras.slice(start, end).map((c, index) => {
                         const isSel = selected.has(c.id);
+                        const isEvenRow = index % 2 === 0;
+                        const baseBackground = isSel ? '#dbeafe' : STATUS_BG[c.estado] && STATUS_BG[c.estado] !== 'transparent' ? STATUS_BG[c.estado] : isEvenRow ? '#fafafa' : 'white';
                         return (
                           <tr key={`${c.id}-${index}`}
-                            style={{ background: isSel ? '#dbeafe' : STATUS_BG[c.estado], borderBottom: '1px solid #f1f5f9', cursor: c.estado === 'disponible' ? 'pointer' : 'default' }}
+                            style={{ background: baseBackground, borderBottom: '1px solid #f1f5f9', cursor: c.estado === 'disponible' ? 'pointer' : 'default' }}
                             onClick={() => toggleSelect(c.id, c.estado)}>
                             <td style={{ padding: '5px 8px', textAlign: 'center' }}>
                               {c.estado === 'disponible' && (
@@ -415,7 +416,7 @@ export default function VinculadorPage() {
                               <div style={{ fontSize: '0.68rem', color: '#64748b' }}>{c.tipo_c} {c.anio_c}</div>
                             </td>
                             <td style={{ padding: '5px 8px', maxWidth: '280px' }}>
-                              <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 600 }} title={c.insumo_descripcion}>doc: {c.insumo_descripcion}</div>
+                              <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 600 }} title={c.insumo_descripcion}>{c.insumo_descripcion}</div>
                               {selectedInsumoNombre && (
                                 <div style={{ fontSize: '0.65rem', color: '#94a3b8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={selectedInsumoNombre}>{selectedInsumoNombre}</div>
                               )}
@@ -455,7 +456,7 @@ export default function VinculadorPage() {
 
               {/* Footer de Paginación */}
               {!loadingCompras && selectedInsumoCodigo && filteredCompras.length > 0 && (
-                <div style={{ borderTop: '1px solid #e2e8f0', background: '#f8fafc', padding: '0.25rem 0.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.4rem', fontSize: '0.7rem', color: '#475569', flexShrink: 0 }}>
+                <div style={{ borderTop: '1px solid #e2e8f0', background: '#f8fafc', padding: '0.4rem 0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.4rem', fontSize: '0.75rem', color: '#475569', flexShrink: 0 }}>
                   <div style={{ display: 'flex', gap: '0.3rem', alignItems: 'center' }}>
                     <label style={{ fontWeight: 500, fontSize: '0.65rem' }}>Mostrar:</label>
                     <select value={rowsPerPage} onChange={(e) => { setRowsPerPage(Number(e.target.value)); setCurrentPage(1); }}
