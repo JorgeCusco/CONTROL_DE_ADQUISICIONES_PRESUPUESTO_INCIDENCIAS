@@ -14,11 +14,13 @@ export async function GET(request: Request) {
     
     // Fetch rendition and metrado_fijo from partidas_p
     const rendRes = await client.query(
-      'SELECT rendimiento_p as "Partida_Rendimiento", cantidad_p as "metrado_fijo" FROM partidas_p WHERE item = $1 LIMIT 1',
+      'SELECT item, descripcion, unidad, rendimiento_p as "Partida_Rendimiento", cantidad_p as "metrado_fijo" FROM partidas_p WHERE item = $1 LIMIT 1',
       [partida]
     );
     const rendimiento = rendRes.rows[0]?.Partida_Rendimiento || 'No especificado';
     const metrado_fijo = rendRes.rows[0]?.metrado_fijo || 0;
+    const descripcion = rendRes.rows[0]?.descripcion || '';
+    const unidad = rendRes.rows[0]?.unidad || '';
 
     // Fetch all insumos for the APU from the acus table
     const query = `
@@ -36,6 +38,8 @@ export async function GET(request: Request) {
     return NextResponse.json({
       rendimiento,
       metrado_fijo,
+      descripcion,
+      unidad,
       insumos: result.rows
     });
   } catch (error) {

@@ -27,6 +27,8 @@ export default function ApuComparative({
   const [insumos, setInsumos] = useState<InsumoAPU[]>([]);
   const [rendimientoOriginal, setRendimientoOriginal] = useState<string>('');
   const [metradoFijo, setMetradoFijo] = useState<number>(0);
+  const [partidaDesc, setPartidaDesc] = useState<string>('');
+  const [partidaUnidad, setPartidaUnidad] = useState<string>('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -37,6 +39,8 @@ export default function ApuComparative({
           setInsumos(data.insumos);
           setRendimientoOriginal(data.rendimiento);
           setMetradoFijo(data.metrado_fijo || 0);
+          setPartidaDesc(data.descripcion || '');
+          setPartidaUnidad(data.unidad || '');
         } else {
           setInsumos(Array.isArray(data) ? data : []);
         }
@@ -48,6 +52,29 @@ export default function ApuComparative({
 
   let totalAntiguo = 0;
   let totalNuevo = 0;
+
+  insumos.forEach(ins => {
+    // Antiguo
+    const parcial = Number(ins.parcial_original) || 0;
+    totalAntiguo += parcial;
+
+    // Nuevo
+    const cantOrig = Number(ins.incidencia_original) || 0;
+    const parcialOrig = Number(ins.parcial_original) || 0;
+    let precioOrig = cantOrig > 0 ? (parcialOrig / cantOrig) : 0;
+    if (ins.unidad.includes('%')) {
+      precioOrig = cantOrig > 0 ? (parcialOrig * 100) / cantOrig : 0;
+    }
+
+    const isSelected = ins.descripcion === selectedInsumoName;
+    const cantNueva = isSelected ? modifiedIncidencia : cantOrig;
+    const precioNuevo = isSelected ? ppp : precioOrig;
+    let parcialNuevo = cantNueva * precioNuevo;
+    if (ins.unidad.includes('%')) {
+      parcialNuevo = parcialNuevo / 100;
+    }
+    totalNuevo += parcialNuevo;
+  });
 
   return (
     <div style={{display: 'flex', gap: '2rem', padding: '1rem', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', margin: '1rem 0'}}>
@@ -65,6 +92,22 @@ export default function ApuComparative({
             </span>
           </div>
         </h4>
+
+        {/* Detalles de la Partida - Antiguo */}
+        <div style={{background: '#f1f5f9', border: '1px solid #cbd5e1', padding: '0.75rem', borderRadius: '4px', marginBottom: '1rem', fontSize: '0.85rem', color: '#334155'}}>
+          <div style={{display: 'flex', marginBottom: '4px'}}>
+            <strong style={{width: '60px'}}>Ítem:</strong> <span style={{fontWeight: 'bold'}}>{codigoPartida}</span>
+          </div>
+          <div style={{display: 'flex', marginBottom: '4px'}}>
+            <strong style={{width: '60px'}}>Partida:</strong> <span style={{flex: 1}}>{partidaDesc}</span>
+          </div>
+          <div style={{display: 'flex', gap: '2rem'}}>
+            <div><strong>Unidad:</strong> {partidaUnidad}</div>
+            <div><strong>Metrado:</strong> {Number(metradoFijo).toFixed(4)}</div>
+            <div><strong>P.U.:</strong> <span style={{color: '#0f172a', fontWeight: 'bold'}}>{totalAntiguo.toLocaleString('en-US', {minimumFractionDigits: 4, maximumFractionDigits: 4})}</span></div>
+          </div>
+        </div>
+
         <table style={{width: '100%', fontSize: '0.85rem', borderCollapse: 'collapse'}}>
           <thead>
             <tr style={{background: '#e2e8f0'}}>
@@ -85,7 +128,6 @@ export default function ApuComparative({
               if (ins.unidad.includes('%')) {
                 precio = cant > 0 ? (parcial * 100) / cant : 0;
               }
-              totalAntiguo += parcial;
 
               const isSelected = ins.descripcion === selectedInsumoName;
               return (
@@ -140,6 +182,22 @@ export default function ApuComparative({
             </span>
           </div>
         </h4>
+
+        {/* Detalles de la Partida - Nuevo */}
+        <div style={{background: '#eff6ff', border: '1px solid #bfdbfe', padding: '0.75rem', borderRadius: '4px', marginBottom: '1rem', fontSize: '0.85rem', color: '#1e40af'}}>
+          <div style={{display: 'flex', marginBottom: '4px'}}>
+            <strong style={{width: '60px'}}>Ítem:</strong> <span style={{fontWeight: 'bold'}}>{codigoPartida}</span>
+          </div>
+          <div style={{display: 'flex', marginBottom: '4px'}}>
+            <strong style={{width: '60px'}}>Partida:</strong> <span style={{flex: 1}}>{partidaDesc}</span>
+          </div>
+          <div style={{display: 'flex', gap: '2rem'}}>
+            <div><strong>Unidad:</strong> {partidaUnidad}</div>
+            <div><strong>Metrado:</strong> {Number(metradoFijo).toFixed(4)}</div>
+            <div><strong>P.U. (N):</strong> <span style={{color: '#1d4ed8', fontWeight: 'bold'}}>{totalNuevo.toLocaleString('en-US', {minimumFractionDigits: 4, maximumFractionDigits: 4})}</span></div>
+          </div>
+        </div>
+
         <table style={{width: '100%', fontSize: '0.85rem', borderCollapse: 'collapse'}}>
           <thead>
             <tr style={{background: '#dbeafe'}}>
@@ -169,8 +227,6 @@ export default function ApuComparative({
               if (ins.unidad.includes('%')) {
                 parcialNuevo = parcialNuevo / 100;
               }
-
-              totalNuevo += parcialNuevo;
 
               return (
                 <tr key={`${ins.id}-${index}`} style={{background: isSelected ? '#bfdbfe' : 'transparent', borderBottom: '1px solid #e2e8f0'}}>
