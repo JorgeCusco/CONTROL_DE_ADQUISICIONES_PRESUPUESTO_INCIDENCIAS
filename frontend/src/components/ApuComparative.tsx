@@ -81,7 +81,10 @@ export default function ApuComparative({
               const cant = Number(ins.incidencia_original) || 0;
               const inci_x_m = cant * metradoFijo;
               const parcial = Number(ins.parcial_original) || 0;
-              const precio = cant > 0 ? (parcial / cant) : 0;
+              let precio = cant > 0 ? (parcial / cant) : 0;
+              if (ins.unidad.includes('%')) {
+                precio = cant > 0 ? (parcial * 100) / cant : 0;
+              }
               totalAntiguo += parcial;
 
               const isSelected = ins.descripcion === selectedInsumoName;
@@ -159,7 +162,10 @@ export default function ApuComparative({
               const cantNueva = isSelected ? modifiedIncidencia : cantOrig;
               const inci_x_m = cantNueva * metradoFijo;
               const precioNuevo = isSelected ? ppp : precioOrig;
-              const parcialNuevo = cantNueva * precioNuevo;
+              let parcialNuevo = cantNueva * precioNuevo;
+              if (ins.unidad.includes('%')) {
+                parcialNuevo = parcialNuevo / 100;
+              }
 
               totalNuevo += parcialNuevo;
 

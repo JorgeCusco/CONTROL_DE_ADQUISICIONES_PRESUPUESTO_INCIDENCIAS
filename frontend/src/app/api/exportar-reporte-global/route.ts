@@ -337,12 +337,18 @@ export async function GET() {
       partida.insumos.forEach((ins: any) => {
         const cantOrig = Number(ins.cant_orig) || 0;
         const parcialOrig = Number(ins.parcial_orig) || 0;
-        const precioOrig = cantOrig > 0 ? parcialOrig / cantOrig : 0;
-        const inciOrigXM = cantOrig * partida.metrado_fijo;
+        let precioOrig = cantOrig > 0 ? parcialOrig / cantOrig : 0;
         
         const cantMod = Number(ins.cant_mod) || 0;
         const parcialMod = Number(ins.parcial_mod) || 0;
-        const precioMod = cantMod > 0 ? parcialMod / cantMod : 0;
+        let precioMod = cantMod > 0 ? parcialMod / cantMod : 0;
+
+        if (ins.unidad && ins.unidad.includes('%')) {
+           precioOrig = cantOrig > 0 ? (parcialOrig * 100) / cantOrig : 0;
+           precioMod = cantMod > 0 ? (parcialMod * 100) / cantMod : 0;
+        }
+
+        const inciOrigXM = cantOrig * partida.metrado_fijo;
         const inciModXM = cantMod * partida.metrado_fijo;
 
         totalAntiguo += parcialOrig;
