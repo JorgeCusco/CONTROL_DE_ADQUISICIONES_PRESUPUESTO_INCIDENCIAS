@@ -56,6 +56,7 @@ export async function GET() {
       SELECT 
              p.item as partida_item,
              p.descripcion as partida_desc,
+             MAX(p.unidad) as partida_unidad,
              COALESCE(p.cantidad_p, 0) as metrado_fijo,
              COALESCE(p.rendimiento_p, '1') as rendimiento,
              a.codigo_insumo,
@@ -285,6 +286,7 @@ export async function GET() {
         partidasMap.set(item, {
           item: item,
           desc: row.partida_desc || '',
+          unidad: row.partida_unidad || '',
           metrado_fijo: Number(row.metrado_fijo) || 0,
           rendimiento: row.rendimiento || '1',
           insumos: []
@@ -299,21 +301,53 @@ export async function GET() {
         spacer.height = 15;
       }
 
-      // Title Row
+      let preTotalAntiguo = 0;
+      let preTotalNuevo = 0;
+      partida.insumos.forEach((ins: any) => {
+        preTotalAntiguo += Number(ins.parcial_orig) || 0;
+        preTotalNuevo += Number(ins.parcial_mod) || 0;
+      });
+
       const mf = partida.metrado_fijo.toFixed(4);
+      
+      // Title Row
       const titleRow = wsGemelo.addRow([
-        `📜 APU Antiguo (Original)             Metrado Fijo: ${mf}   Rend: ${partida.rendimiento}`, '', '', '', '', '',
+        `📜 APU Antiguo (Original)             Rend: ${partida.rendimiento}`, '', '', '', '', '',
         '',
-        `✨ APU Nuevo (Modificado)             Metrado Fijo: ${mf}   Rend: ${partida.rendimiento}`, '', '', '', '', ''
+        `✨ APU Nuevo (Modificado)             Rend: ${partida.rendimiento}`, '', '', '', '', ''
       ]);
       wsGemelo.mergeCells(titleRow.number, 1, titleRow.number, 6);
       wsGemelo.mergeCells(titleRow.number, 8, titleRow.number, 13);
       titleRow.font = { bold: true, size: 10 };
       titleRow.height = 25;
       titleRow.alignment = { vertical: 'middle' };
-      
       titleRow.getCell(1).font = { color: { argb: 'FF475569' }, bold: true };
       titleRow.getCell(8).font = { color: { argb: 'FF1D4ED8' }, bold: true };
+
+      // Meta Rows
+      const metaRow1 = wsGemelo.addRow([
+        'Ítem:', partida.item, '', '', '', '', '', 'Ítem:', partida.item, '', '', '', ''
+      ]);
+      wsGemelo.mergeCells(metaRow1.number, 2, metaRow1.number, 6);
+      wsGemelo.mergeCells(metaRow1.number, 9, metaRow1.number, 13);
+      metaRow1.getCell(1).font = { bold: true }; metaRow1.getCell(8).font = { bold: true };
+      
+      const metaRow2 = wsGemelo.addRow([
+        'Partida:', partida.desc, '', '', '', '', '', 'Partida:', partida.desc, '', '', '', ''
+      ]);
+      wsGemelo.mergeCells(metaRow2.number, 2, metaRow2.number, 6);
+      wsGemelo.mergeCells(metaRow2.number, 9, metaRow2.number, 13);
+      metaRow2.getCell(1).font = { bold: true }; metaRow2.getCell(8).font = { bold: true };
+      
+      const metaRow3 = wsGemelo.addRow([
+        'Unidad:', partida.unidad, 'Metrado:', mf, 'P.U.:', preTotalAntiguo, '', 'Unidad:', partida.unidad, 'Metrado:', mf, 'P.U. (N):', preTotalNuevo
+      ]);
+      metaRow3.getCell(1).font = { bold: true }; metaRow3.getCell(3).font = { bold: true }; metaRow3.getCell(5).font = { bold: true };
+      metaRow3.getCell(8).font = { bold: true }; metaRow3.getCell(10).font = { bold: true }; metaRow3.getCell(12).font = { bold: true };
+      metaRow3.getCell(6).numFmt = '#,##0.0000';
+      metaRow3.getCell(13).numFmt = '#,##0.0000';
+      metaRow3.getCell(6).font = { bold: true, color: { argb: 'FF0F172A' } };
+      metaRow3.getCell(13).font = { bold: true, color: { argb: 'FF1D4ED8' } };
 
       // Header Row
       const headerRow = wsGemelo.addRow([
