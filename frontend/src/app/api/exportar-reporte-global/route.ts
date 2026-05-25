@@ -52,6 +52,25 @@ export async function GET() {
       ORDER BY a.codigo_insumo, COALESCE(p.item, a.item_partida)
     `);
 
+    const apusGemeloResult = await client.query(`
+      SELECT 
+             a.codigo_insumo,
+             COALESCE(p.item, a.item_partida) as item,
+             COALESCE(MAX(p.descripcion), '[PARTIDA FALTANTE EN PRESUPUESTO]') as partida_desc,
+             COALESCE(MAX(p.cantidad_p), 0) as metrado_fijo,
+             MAX(i.descripcion) as descripcion_insumo,
+             MAX(i.unidad) as unidad,
+             SUM(a.cantidad_p) as incidencia_expediente,
+             (SUM(a.cantidad_p) * COALESCE(MAX(p.cantidad_p), 0)) as cantidad_expediente,
+             SUM(COALESCE(a.cantidad_c, a.cantidad_p)) as incidencia_modificada,
+             (SUM(COALESCE(a.cantidad_c, a.cantidad_p)) * COALESCE(MAX(p.cantidad_p), 0)) as cantidad_modificada
+      FROM acus a
+      LEFT JOIN partidas_p p ON a.item_partida = p.item
+      LEFT JOIN insumos_p i ON a.codigo_insumo = i.codigo
+      GROUP BY a.item_partida, p.item, a.codigo_insumo
+      ORDER BY COALESCE(p.item, a.item_partida) ASC, a.codigo_insumo ASC
+    `);
+
     client.release();
 
     const workbook = new ExcelJS.Workbook();
@@ -246,6 +265,141 @@ export async function GET() {
     });
 
     worksheetApu.views = [{ state: 'frozen', ySplit: 1 }];
+
+    // -------------------------------------------------------------
+    // HOJA 3: APUS GEMELO COMPARATIVO
+    // -------------------------------------------------------------
+    const wsGemelo = workbook.addWorksheet('APUs Gemelo Comparativo');
+
+    // Filas 1 y 2 para Cabeceras Anidadas
+    const titleRow = wsGemelo.addRow([
+      'DATOS DE LA PARTIDA E INSUMO', '', '', '', '', '',
+      'APU ORIGINAL (EXPEDIENTE)', '',
+      'APU GEMELO (EDITADO)', '',
+      'COMPARATIVO', ''
+    ]);
+    
+    const subHeadersGemelo = [
+      'Item', 'Descripción de Partida', 'Metrado', 'Cód. Insumo', 'Descripción Insumo', 'Und',
+      'Incidencia', 'Parcial',
+      'Incidencia', 'Parcial',
+      'Dif. Incidencia', 'Dif. Parcial'
+    ];
+    const headerRowGemelo = wsGemelo.addRow(subHeadersGemelo);
+
+    // Merge superheaders
+    wsGemelo.mergeCells('A1:F1');
+    wsGemelo.mergeCells('G1:H1');
+    wsGemelo.mergeCells('I1:J1');
+    wsGemelo.mergeCells('K1:L1');
+
+    // Estilos de cabecera principal (Fila 1)
+    titleRow.height = 25;
+    titleRow.alignment = { horizontal: 'center', vertical: 'middle', bold: true };
+    titleRow.font = { color: { argb: 'FFFFFFFF' }, bold: true, size: 11 };
+    
+    titleRow.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1e293b' } }; // Slate 800
+    titleRow.getCell(7).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF475569' } }; // Slate 600 (Gris oscuro/azulado)
+    titleRow.getCell(9).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF059669' } }; // Emerald 600 (Verde)
+    titleRow.getCell(11).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFCA8A04' } }; // Yellow 600 (Ambar/Dorado)
+
+    // Estilos de subcabecera (Fila 2)
+    headerRowGemelo.height = 30;
+    headerRowGemelo.font = { color: { argb: 'FFFFFFFF' }, bold: true, size: 10 };
+    headerRowGemelo.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+    
+    // Asignar colores a subcabeceras según el bloque
+    for (let col = 1; col <= 6; col++) headerRowGemelo.getCell(col).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF334155' } }; // Slate 700
+    for (let col = 7; col <= 8; col++) headerRowGemelo.getCell(col).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF64748B' } }; // Slate 500
+    for (let col = 9; col <= 10; col++) headerRowGemelo.getCell(col).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF10B981' } }; // Emerald 500
+    for (let col = 11; col <= 12; col++) headerRowGemelo.getCell(col).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEAB308' } }; // Yellow 500
+
+    // Anchos de columna
+    wsGemelo.columns = [
+      { width: 15 }, // Item
+      { width: 40 }, // Partida
+      { width: 12 }, // Metrado
+      { width: 15 }, // Codigo
+      { width: 45 }, // Insumo
+      { width: 8 },  // Und
+      { width: 16 }, // Inc Orig
+      { width: 16 }, // Par Orig
+      { width: 16 }, // Inc Gem
+      { width: 16 }, // Par Gem
+      { width: 16 }, // Var Inc
+      { width: 16 }  // Var Par
+    ];
+
+    let currentItem = '';
+
+    apusGemeloResult.rows.forEach((row) => {
+      const inc_orig = Number(row.incidencia_expediente) || 0;
+      const par_orig = Number(row.cantidad_expediente) || 0;
+      const inc_edit = Number(row.incidencia_modificada) || 0;
+      const par_edit = Number(row.cantidad_modificada) || 0;
+      
+      const dif_inc = inc_edit - inc_orig;
+      const dif_par = par_edit - par_orig;
+      
+      const item = row.item || '';
+      
+      // Añadir fila divisora si cambia de partida para mantener elegancia
+      if (currentItem !== '' && currentItem !== item) {
+         const spacer = wsGemelo.addRow(new Array(12).fill(''));
+         spacer.height = 5;
+         spacer.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFCBD5E1' } }; // Slate 300
+      }
+      currentItem = item;
+
+      const dataRow = wsGemelo.addRow([
+        item,
+        row.partida_desc || '',
+        Number(row.metrado_fijo) || 0,
+        row.codigo_insumo || '',
+        row.descripcion_insumo || '',
+        row.unidad || '',
+        inc_orig,
+        par_orig,
+        inc_edit,
+        par_edit,
+        dif_inc,
+        dif_par
+      ]);
+
+      // Bordes
+      dataRow.eachCell((cell) => {
+        cell.border = {
+          top: { style: 'thin' },
+          left: { style: 'thin' },
+          bottom: { style: 'thin' },
+          right: { style: 'thin' }
+        };
+        cell.alignment = { vertical: 'middle' };
+      });
+
+      // Formato numérico
+      dataRow.getCell(3).numFmt = '#,##0.00';
+      dataRow.getCell(7).numFmt = '#,##0.000000';
+      dataRow.getCell(8).numFmt = '#,##0.0000';
+      dataRow.getCell(9).numFmt = '#,##0.000000';
+      dataRow.getCell(10).numFmt = '#,##0.0000';
+      dataRow.getCell(11).numFmt = '#,##0.000000';
+      dataRow.getCell(12).numFmt = '#,##0.0000';
+
+      // Resaltado tenue si hubo modificación
+      if (Math.abs(dif_inc) > 0.000001) {
+        // Fondo verde súper tenue para el gemelo indicando cambio
+        dataRow.getCell(9).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD1FAE5' } }; // Emerald 100
+        dataRow.getCell(10).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD1FAE5' } }; 
+        
+        // Letra roja si es negativo, o verde oscuro si es positivo
+        const fontColor = dif_inc > 0 ? 'FF065F46' : 'FF991B1B'; // Emerald 800 or Red 800
+        dataRow.getCell(11).font = { color: { argb: fontColor }, bold: true };
+        dataRow.getCell(12).font = { color: { argb: fontColor }, bold: true };
+      }
+    });
+
+    wsGemelo.views = [{ state: 'frozen', ySplit: 2 }];
 
     const buffer = await workbook.xlsx.writeBuffer();
     const filename = `reporte-global-cuadre-${new Date().toISOString().split('T')[0]}.xlsx`;
