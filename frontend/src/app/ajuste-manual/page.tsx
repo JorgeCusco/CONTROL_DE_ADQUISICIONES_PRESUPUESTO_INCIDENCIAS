@@ -484,6 +484,7 @@ export default function Home() {
             Edita la <strong>Unidad</strong> y la <strong>Cantidad_Und</strong> para unificar y cuadrar las compras.
           </p>
 
+          {/* 
           <div style={{ marginBottom: '1.5rem', padding: '1rem', background: '#f8fafc', borderLeft: '4px solid var(--primary)' }}>
             <label htmlFor="official-name" style={{ fontWeight: 'bold', display: 'block', marginBottom: '0.5rem' }}>✏️ Definir Nombre Oficial del Insumo:</label>
             <select
@@ -508,6 +509,7 @@ export default function Home() {
               ))}
             </select>
           </div>
+          */}
 
           {notification && (
             <div style={{
