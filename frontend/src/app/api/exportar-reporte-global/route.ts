@@ -49,7 +49,7 @@ export async function GET() {
       LEFT JOIN insumos_p i ON a.codigo_insumo = i.codigo
       LEFT JOIN estado_cuadre_insumos e ON a.codigo_insumo = e.codigo_insumo
       GROUP BY a.item_partida, p.item, a.codigo_insumo
-      ORDER BY a.codigo_insumo, COALESCE(p.item, a.item_partida)
+      ORDER BY COALESCE(p.item, a.item_partida), a.codigo_insumo
     `);
 
     const apusGemeloResult = await client.query(`
@@ -62,14 +62,27 @@ export async function GET() {
              a.codigo_insumo,
              a.descripcion_insumo as descripcion,
              MAX(a.unidad) as unidad,
+             UPPER(COALESCE(a.tipo, 'OTROS')) as tipo,
              SUM(a.cantidad_p) as cant_orig,
              SUM(a.parcial_p) as parcial_orig,
              SUM(COALESCE(a.cantidad_c, a.cantidad_p)) as cant_mod,
              SUM(COALESCE(a.parcial_c, a.parcial_p)) as parcial_mod
       FROM acus a
       LEFT JOIN partidas_p p ON a.item_partida = p.item
-      GROUP BY p.item, p.descripcion, p.cantidad_p, p.rendimiento_p, a.codigo_insumo, a.descripcion_insumo
-      ORDER BY p.item ASC, a.codigo_insumo ASC
+      GROUP BY p.item, p.descripcion, p.cantidad_p, p.rendimiento_p, a.codigo_insumo, a.descripcion_insumo, a.tipo
+      ORDER BY
+        COALESCE(
+          CAST(NULLIF(REGEXP_REPLACE(REGEXP_REPLACE(COALESCE(p.item,''), '^.*[Oo]\.?[Ee]\.', ''), '[^0-9].*', ''), '') AS INTEGER),
+          9999
+        ),
+        p.item ASC,
+        CASE UPPER(COALESCE(a.tipo, ''))
+          WHEN 'MANO DE OBRA' THEN 1
+          WHEN 'MATERIALES'   THEN 2
+          WHEN 'EQUIPO'       THEN 3
+          ELSE 4
+        END,
+        a.codigo_insumo ASC
     `);
 
     client.release();
@@ -295,7 +308,20 @@ export async function GET() {
       partidasMap.get(item).insumos.push({ ...row });
     });
 
-    Array.from(partidasMap.values()).forEach((partida, idx) => {
+    // Ordenar partidas numéricamente por especialidad (OE.1, OE.2... OE.10, no lexicográfico)
+    const extractEspNum = (item: string): number => {
+      const stripped = item.replace(/^.*[Oo]\.?[Ee]\./, '');
+      const m = stripped.match(/^(\d+)/);
+      return m ? parseInt(m[1], 10) : 9999;
+    };
+    const sortedPartidas = Array.from(partidasMap.values()).sort((a: any, b: any) => {
+      const ea = extractEspNum(a.item);
+      const eb = extractEspNum(b.item);
+      if (ea !== eb) return ea - eb;
+      return String(a.item).localeCompare(String(b.item));
+    });
+
+    sortedPartidas.forEach((partida: any, idx: number) => {
       if (idx > 0) {
         const spacer = wsGemelo.addRow([]);
         spacer.height = 15;
@@ -368,7 +394,19 @@ export async function GET() {
       let totalAntiguo = 0;
       let totalNuevo = 0;
 
-      partida.insumos.forEach((ins: any) => {
+      // Agrupar insumos por tipo: MANO DE OBRA → MATERIALES → EQUIPO
+      const TIPO_ORDER_G: Record<string, number> = { 'MANO DE OBRA': 1, 'MATERIALES': 2, 'EQUIPO': 3 };
+      const tipoGroupsG = new Map<string, any[]>();
+      for (const ins of partida.insumos) {
+        const key = (ins.tipo || 'OTROS').toUpperCase().trim();
+        if (!tipoGroupsG.has(key)) tipoGroupsG.set(key, []);
+        tipoGroupsG.get(key)!.push(ins);
+      }
+      const sortedTiposG = [...tipoGroupsG.entries()].sort(
+        (a, b) => (TIPO_ORDER_G[a[0]] ?? 99) - (TIPO_ORDER_G[b[0]] ?? 99)
+      );
+
+      const renderInsumoRow = (ins: any) => {
         const cantOrig = Number(ins.cant_orig) || 0;
         const parcialOrig = Number(ins.parcial_orig) || 0;
         let precioOrig = cantOrig > 0 ? parcialOrig / cantOrig : 0;
@@ -428,16 +466,37 @@ export async function GET() {
         dataRow.getCell(13).numFmt = '#,##0.0000';
 
         if (isModified) {
-          dataRow.getCell(3).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF08A' } }; // Amarillo UI
+          dataRow.getCell(3).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF08A' } };
           dataRow.getCell(4).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF08A' } };
-          dataRow.getCell(10).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFBFDBFE' } }; // Celeste UI
+          dataRow.getCell(10).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFBFDBFE' } };
           dataRow.getCell(11).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFBFDBFE' } };
           
           for(let c of [3,4,6,10,11,13]) dataRow.getCell(c).font = { bold: true, size: 9 };
           dataRow.getCell(12).font = { color: { argb: 'FF166534' }, bold: true, size: 9 };
           dataRow.getCell(13).font = { color: { argb: 'FF1D4ED8' }, bold: true, size: 9 };
         }
-      });
+      };
+
+      for (const [tipoKey, tipoInsumos] of sortedTiposG) {
+        if (tipoInsumos.length === 0) continue;
+        // Fila de cabecera de tipo (MANO DE OBRA / MATERIALES / EQUIPO)
+        const tipoRow = wsGemelo.addRow([
+          `  ${tipoKey}`, '', '', '', '', '',
+          '',
+          `  ${tipoKey}`, '', '', '', '', ''
+        ]);
+        wsGemelo.mergeCells(tipoRow.number, 1, tipoRow.number, 6);
+        wsGemelo.mergeCells(tipoRow.number, 8, tipoRow.number, 13);
+        tipoRow.height = 15;
+        tipoRow.font = { bold: true, size: 9, italic: true, color: { argb: 'FF334155' } };
+        for (let c = 1; c <= 6; c++) {
+          tipoRow.getCell(c).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2E8F0' } };
+        }
+        for (let c = 8; c <= 13; c++) {
+          tipoRow.getCell(c).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2E8F0' } };
+        }
+        tipoInsumos.forEach(renderInsumoRow);
+      }
 
       const totalRow = wsGemelo.addRow([
         '', '', '', '', 'TOTAL:', totalAntiguo,

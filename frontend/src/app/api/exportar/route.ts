@@ -55,7 +55,7 @@ export async function GET() {
   try {
     const client = await pool.connect();
 
-    const [apuRes, comprasRes, resumenRes, histRes, apuPartidaRes] = await Promise.all([
+    const [apuRes, comprasRes, resumenRes, histRes, apuPartidaRes, gemeloRes] = await Promise.all([
       client.query(`
         SELECT
           p.item            AS partida_codigo,
@@ -124,6 +124,59 @@ export async function GET() {
         FROM acus a
         JOIN partidas_p p ON a.item_partida = p.item
         ORDER BY p.item, a.id
+      `),
+      client.query(`
+        SELECT
+          p.item            AS partida_codigo,
+          p.descripcion     AS partida_desc,
+          p.unidad          AS partida_unidad,
+          p.cantidad_p      AS metrado_fijo,
+          COALESCE(p.rendimiento_p, '1') AS rendimiento,
+          a.tipo,
+          a.descripcion_insumo,
+          a.unidad          AS insumo_unidad,
+          a.cantidad_p      AS cant_orig,
+          a.precio_p        AS pu_orig,
+          a.parcial_p       AS parcial_orig,
+          COALESCE(a.cantidad_c, a.cantidad_p)  AS cant_nuevo,
+          COALESCE(a.precio_c,   a.precio_p)    AS pu_nuevo,
+          COALESCE(a.parcial_c,  a.parcial_p)   AS parcial_nuevo,
+          -- Specialty numeric sort key.
+          -- Handles: "OE.3.1.1", "O.E.03.13", "10 O.E.03.13.06.03", "3.1.1.1", "10.3.8"
+          -- Strategy: skip everything up to and including the last "O.E." / "OE." token,
+          --           then take the leading digits.  Falls back to the first digits when
+          --           there is no O.E. token (pure-numeric codes like "3.1.1.1").
+          COALESCE(
+            CAST(NULLIF(
+              REGEXP_REPLACE(
+                REGEXP_REPLACE(p.item, '^.*[Oo]\.?[Ee]\.', ''),
+                '[^0-9].*', ''
+              ), '') AS INTEGER),
+            9999
+          ) AS esp_orden,
+          -- Specialty description: find the shortest parent record whose OE number matches
+          COALESCE(
+            (SELECT pp.descripcion
+             FROM partidas_p pp
+             WHERE CAST(NULLIF(REGEXP_REPLACE(REGEXP_REPLACE(COALESCE(pp.item,''), '^.*[Oo]\.?[Ee]\.', ''), '[^0-9].*', ''), '') AS INTEGER)
+                 = CAST(NULLIF(REGEXP_REPLACE(REGEXP_REPLACE(p.item, '^.*[Oo]\.?[Ee]\.', ''), '[^0-9].*', ''), '') AS INTEGER)
+               AND REGEXP_REPLACE(COALESCE(pp.item,''), '^[^0-9]*', '') NOT LIKE '%.%'
+             ORDER BY LENGTH(pp.item) ASC
+             LIMIT 1),
+            'ESPECIALIDAD ' || REGEXP_REPLACE(REGEXP_REPLACE(p.item, '^.*[Oo]\.?[Ee]\.', ''), '[^0-9].*', '')
+          ) AS especialidad_desc
+        FROM acus a
+        JOIN partidas_p p ON a.item_partida = p.item
+        ORDER BY
+          esp_orden,
+          p.item,
+          CASE UPPER(COALESCE(a.tipo,''))
+            WHEN 'MANO DE OBRA' THEN 1
+            WHEN 'MATERIALES'   THEN 2
+            WHEN 'EQUIPO'       THEN 3
+            ELSE 4
+          END,
+          a.id
       `),
     ]);
     client.release();
@@ -585,6 +638,260 @@ export async function GET() {
 
       partidaRowNum++;
     }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // HOJA — APU Gemelo (Estilo UI)
+    // Dos APUs lado a lado por partida, agrupados por tipo (MO / Mat / Eq.)
+    // ══════════════════════════════════════════════════════════════════════════
+    const wsG = wb.addWorksheet('APU Gemelo (Estilo UI)', {
+      pageSetup: { orientation: 'landscape', fitToPage: true, fitToWidth: 1 },
+    });
+
+    wsG.columns = [
+      { key: 'A', width: 36 }, // Left  – Insumo
+      { key: 'B', width: 8  }, // Left  – Unid
+      { key: 'C', width: 12 }, // Left  – Cant
+      { key: 'D', width: 13 }, // Left  – Inci × M
+      { key: 'E', width: 12 }, // Left  – P.U.
+      { key: 'F', width: 14 }, // Left  – Parcial
+      { key: 'G', width: 3  }, // Spacer
+      { key: 'H', width: 36 }, // Right – Insumo
+      { key: 'I', width: 8  }, // Right – Unid
+      { key: 'J', width: 12 }, // Right – Cant (N)
+      { key: 'K', width: 13 }, // Right – Inci × M
+      { key: 'L', width: 12 }, // Right – P.U. (N)
+      { key: 'M', width: 14 }, // Right – Parcial (N)
+    ];
+
+    // ── local helpers ─────────────────────────────────────────────────────────
+    const GW = wsG;
+
+    function gCell(r: number, c: number, val: ExcelJS.CellValue, bg: string, fg: string, bold: boolean, sz: number, align: ExcelJS.Alignment['horizontal'], numFmt?: string) {
+      const cell = GW.getCell(r, c);
+      cell.value = val;
+      cell.fill  = fill(bg);
+      cell.font  = { bold, color: { argb: fg }, size: sz };
+      cell.alignment = { horizontal: align, vertical: 'middle' };
+      cell.border = thinBorder;
+      if (numFmt) cell.numFmt = numFmt;
+    }
+
+    function gMerge(r: number, c1: number, c2: number, val: ExcelJS.CellValue, bg: string, fg: string, bold: boolean, sz: number, align: ExcelJS.Alignment['horizontal']) {
+      try { GW.mergeCells(r, c1, r, c2); } catch (_) { /* already merged */ }
+      gCell(r, c1, val, bg, fg, bold, sz, align);
+    }
+
+    function gBlankRow(r: number) {
+      GW.getRow(r).height = 6;
+      for (let c = 1; c <= 13; c++) {
+        GW.getCell(r, c).fill  = fill(WHITE);
+        GW.getCell(r, c).border = {};
+      }
+    }
+
+    // ── colour palette for this sheet ────────────────────────────────────────
+    const G_SLATE  = 'FF334155'; // APU Antiguo header bg
+    const G_BLUE   = 'FF1D4ED8'; // APU Nuevo header bg
+    const G_SLATEF = 'FFF1F5F9'; // info rows bg (left)
+    const G_BLUEF  = 'FFEFF6FF'; // info rows bg (right)
+    const G_YEL    = 'FFFEF08A'; // Cant / Inci×M – APU Antiguo
+    const G_LBLUE  = 'FFBFDBFE'; // Cant / Inci×M – APU Nuevo
+    const G_TIPO   = 'FFE2E8F0'; // Tipo group header
+    const G_CHDR_L = 'FF94A3B8'; // Column header – left
+    const G_CHDR_R = 'FF93C5FD'; // Column header – right
+    const G_DARK   = 'FF1E293B';
+    const G_DNEW   = 'FF1E40AF';
+    const G_LABEL  = 'FF64748B';
+
+    // ── Group rows: specialty → partida → insumos ────────────────────────────
+    type GRow = (typeof gemeloRes.rows)[0];
+
+    const espOrder: number[] = [];
+    const espData  = new Map<number, { desc: string; codes: string[] }>();
+    const partidaData = new Map<string, GRow[]>();
+
+    for (const row of gemeloRes.rows) {
+      // Force numeric conversion — pg may return integers as strings
+      const espNum = Number(row.esp_orden) || 9999;
+      if (!espData.has(espNum)) {
+        espOrder.push(espNum);
+        espData.set(espNum, {
+          desc: String(row.especialidad_desc ?? `ESPECIALIDAD ${espNum}`),
+          codes: [],
+        });
+      }
+      const esp = espData.get(espNum)!;
+      if (!partidaData.has(row.partida_codigo)) {
+        esp.codes.push(row.partida_codigo);
+        partidaData.set(row.partida_codigo, []);
+      }
+      partidaData.get(row.partida_codigo)!.push(row);
+    }
+
+    // Sort specialties numerically (1, 2, 3 … 9, 10, 11) regardless of SQL type
+    espOrder.sort((a, b) => a - b);
+
+    // tipo display names
+    const TIPO_LABELS: Record<string, string> = {
+      'MANO DE OBRA' : 'MANO DE OBRA',
+      'MATERIALES'   : 'MATERIALES',
+      'EQUIPO'       : 'EQUIPO Y HERRAMIENTAS',
+    };
+    const TIPO_ORDER: Record<string, number> = {
+      'MANO DE OBRA': 1, 'MATERIALES': 2, 'EQUIPO': 3,
+    };
+
+    const G_ESP_BG = 'FF0D4F3C'; // Dark teal – specialty banner
+
+    let rn = 1;
+
+    for (const espNum of espOrder) {
+      const { desc: espDesc, codes } = espData.get(espNum)!;
+
+      // ── Specialty banner row ────────────────────────────────────────────────
+      GW.getRow(rn).height = 30;
+      gMerge(rn, 1, 13,
+        `  OE.${espNum}  —  ${espDesc.toUpperCase()}`,
+        G_ESP_BG, WHITE, true, 12, 'left'
+      );
+      rn++;
+      // thin gap below banner
+      GW.getRow(rn).height = 4;
+      for (let c = 1; c <= 13; c++) { GW.getCell(rn, c).fill = fill(G_ESP_BG); }
+      rn++;
+
+    for (const partCod of codes) {
+      const rows   = partidaData.get(partCod)!;
+      const first  = rows[0];
+      const mf     = parseFloat(first.metrado_fijo) || 0;
+      const rend   = first.rendimiento || '1';
+      const totalO = rows.reduce((s, r) => s + (parseFloat(r.parcial_orig)  || 0), 0);
+      const totalN = rows.reduce((s, r) => s + (parseFloat(r.parcial_nuevo) || 0), 0);
+
+      // ── Row 1: Block header ───────────────────────────────────────────────
+      GW.getRow(rn).height = 24;
+      gMerge(rn, 1, 6, `  APU Antiguo (Original)    Rend: ${rend}`, G_SLATE, WHITE, true, 10, 'left');
+      gCell(rn, 7, null, WHITE, WHITE, false, 9, 'center');
+      gMerge(rn, 8, 13, `  APU Nuevo (Modificado)    Rend: ${rend}`, G_BLUE, WHITE, true, 10, 'left');
+      rn++;
+
+      // ── Row 2: Ítem ───────────────────────────────────────────────────────
+      GW.getRow(rn).height = 18;
+      gMerge(rn, 1, 3, `Ítem:  ${first.partida_codigo}`, G_SLATEF, G_DARK, true, 10, 'left');
+      for (const c of [4, 5, 6]) gCell(rn, c, null, G_SLATEF, WHITE, false, 9, 'left');
+      gCell(rn, 7, null, WHITE, WHITE, false, 9, 'center');
+      gMerge(rn, 8, 10, `Ítem:  ${first.partida_codigo}`, G_BLUEF, G_DNEW, true, 10, 'left');
+      for (const c of [11, 12, 13]) gCell(rn, c, null, G_BLUEF, WHITE, false, 9, 'left');
+      rn++;
+
+      // ── Row 3: Partida description ────────────────────────────────────────
+      GW.getRow(rn).height = 20;
+      gMerge(rn, 1, 6, `Partida:  ${first.partida_desc}`, G_SLATEF, G_DARK, false, 10, 'left');
+      gCell(rn, 7, null, WHITE, WHITE, false, 9, 'center');
+      gMerge(rn, 8, 13, `Partida:  ${first.partida_desc}`, G_BLUEF, G_DNEW, false, 10, 'left');
+      rn++;
+
+      // ── Row 4: Unidad / Metrado / P.U. ────────────────────────────────────
+      GW.getRow(rn).height = 18;
+      const YINFO = 'FFFEF9C3';
+      gCell(rn,  1, 'Unidad:',   G_SLATEF, G_LABEL, true,  10, 'center');
+      gCell(rn,  2, first.partida_unidad, G_SLATEF, G_DARK, false, 10, 'center');
+      gCell(rn,  3, 'Metrado:',  G_SLATEF, G_LABEL, true,  10, 'center');
+      gCell(rn,  4, mf,          YINFO,    G_DARK,  false, 10, 'right', '0.0000');
+      gCell(rn,  5, 'P.U.:',     G_SLATEF, G_LABEL, true,  10, 'center');
+      gCell(rn,  6, totalO,      YINFO,    G_DARK,  true,  10, 'right', '#,##0.0000');
+      gCell(rn,  7, null,        WHITE,    WHITE,   false,  9, 'center');
+      gCell(rn,  8, 'Unidad:',   G_BLUEF,  G_LABEL, true,  10, 'center');
+      gCell(rn,  9, first.partida_unidad, G_BLUEF, G_DNEW, false, 10, 'center');
+      gCell(rn, 10, 'Metrado:',  G_BLUEF,  G_LABEL, true,  10, 'center');
+      gCell(rn, 11, mf,          G_LBLUE,  G_DARK,  false, 10, 'right', '0.0000');
+      gCell(rn, 12, 'P.U.:',     G_BLUEF,  G_LABEL, true,  10, 'center');
+      gCell(rn, 13, totalN,      G_LBLUE,  G_DNEW,  true,  10, 'right', '#,##0.0000');
+      rn++;
+
+      // ── Row 5: Column headers ─────────────────────────────────────────────
+      GW.getRow(rn).height = 22;
+      const hdrsL = ['Insumo', 'Unid', 'Cant', 'Inci × M', 'P.U.', 'Parcial'];
+      const hdrsR = ['Insumo', 'Unid', 'Cant (N)', 'Inci × M', 'P.U. (N)', 'Parcial (N)'];
+      for (let i = 0; i < 6; i++) {
+        gCell(rn, i + 1, hdrsL[i], G_CHDR_L, WHITE, true, 9, i === 0 ? 'left' : 'center');
+      }
+      gCell(rn, 7, null, WHITE, WHITE, false, 9, 'center');
+      for (let i = 0; i < 6; i++) {
+        gCell(rn, i + 8, hdrsR[i], G_CHDR_R, G_DNEW, true, 9, i === 0 ? 'left' : 'center');
+      }
+      rn++;
+
+      // ── Group insumos by tipo ─────────────────────────────────────────────
+      const tipoMap = new Map<string, GRow[]>();
+      for (const row of rows) {
+        const key = (row.tipo || 'OTROS').toUpperCase().trim();
+        if (!tipoMap.has(key)) tipoMap.set(key, []);
+        tipoMap.get(key)!.push(row);
+      }
+      const sortedTipos = [...tipoMap.entries()].sort((a, b) =>
+        (TIPO_ORDER[a[0]] ?? 99) - (TIPO_ORDER[b[0]] ?? 99)
+      );
+
+      for (const [tipoKey, tipoRows] of sortedTipos) {
+        const tipoLabel = TIPO_LABELS[tipoKey] ?? tipoKey;
+
+        // Tipo header row
+        GW.getRow(rn).height = 16;
+        gMerge(rn, 1, 6, `  ${tipoLabel}`, G_TIPO, 'FF475569', true, 9, 'left');
+        gCell(rn, 7, null, WHITE, WHITE, false, 9, 'center');
+        gMerge(rn, 8, 13, `  ${tipoLabel}`, G_TIPO, 'FF475569', true, 9, 'left');
+        rn++;
+
+        // Insumo rows
+        for (const row of tipoRows) {
+          GW.getRow(rn).height = 16;
+          const cantO = parseFloat(row.cant_orig)     || 0;
+          const puO   = parseFloat(row.pu_orig)       || 0;
+          const parcO = parseFloat(row.parcial_orig)  || 0;
+          const cantN = parseFloat(row.cant_nuevo)    || 0;
+          const puN   = parseFloat(row.pu_nuevo)      || 0;
+          const parcN = parseFloat(row.parcial_nuevo) || 0;
+          const inciO = cantO * mf;
+          const inciN = cantN * mf;
+
+          // Left (APU Antiguo)
+          gCell(rn, 1, row.descripcion_insumo, WHITE, G_DARK,  false, 9, 'left');
+          gCell(rn, 2, row.insumo_unidad,       WHITE, G_LABEL, false, 9, 'center');
+          gCell(rn, 3, cantO, G_YEL,  G_DARK, false, 9, 'right', '0.0000');
+          gCell(rn, 4, inciO, G_YEL,  G_DARK, false, 9, 'right', '0.0000');
+          gCell(rn, 5, puO,   WHITE,  G_DARK, false, 9, 'right', '#,##0.0000');
+          gCell(rn, 6, parcO, WHITE,  G_DARK, false, 9, 'right', '#,##0.0000');
+
+          // Spacer
+          GW.getCell(rn, 7).fill   = fill(WHITE);
+          GW.getCell(rn, 7).border = { left: { style: 'thin', color: { argb: 'FFCBD5E1' } }, right: { style: 'thin', color: { argb: 'FFCBD5E1' } } };
+
+          // Right (APU Nuevo)
+          gCell(rn,  8, row.descripcion_insumo, WHITE,   G_DARK,  false, 9, 'left');
+          gCell(rn,  9, row.insumo_unidad,       WHITE,   G_LABEL, false, 9, 'center');
+          gCell(rn, 10, cantN, G_LBLUE, G_DARK,  false, 9, 'right', '0.0000');
+          gCell(rn, 11, inciN, G_LBLUE, G_DARK,  false, 9, 'right', '0.0000');
+          gCell(rn, 12, puN,   WHITE,   G_DARK,  false, 9, 'right', '#,##0.0000');
+          gCell(rn, 13, parcN, WHITE,   G_DNEW,  false, 9, 'right', '#,##0.0000');
+          rn++;
+        }
+      }
+
+      // ── TOTAL row ─────────────────────────────────────────────────────────
+      GW.getRow(rn).height = 18;
+      gMerge(rn, 1, 5, 'TOTAL:', G_SLATEF, G_DARK, true, 10, 'right');
+      gCell(rn, 6, totalO, 'FFE2EBD9', G_DARK, true, 10, 'right', '#,##0.0000');
+      gCell(rn, 7, null, WHITE, WHITE, false, 9, 'center');
+      gMerge(rn, 8, 12, 'TOTAL:', G_BLUEF, G_DNEW, true, 10, 'right');
+      gCell(rn, 13, totalN, G_LBLUE, G_DNEW, true, 10, 'right', '#,##0.0000');
+      rn++;
+
+      // ── Blank separator ───────────────────────────────────────────────────
+      gBlankRow(rn);
+      rn++;
+    } // end partida loop
+    } // end specialty loop
 
     // ── Generar buffer y devolver respuesta ───────────────────────────────────
     const buffer = await wb.xlsx.writeBuffer();
