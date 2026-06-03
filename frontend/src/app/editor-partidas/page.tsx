@@ -7,9 +7,9 @@ type Partida = {
   descripcion: string;
   unidad: string;
   cantidad_p: number;
-  precio_unitario_p: number;
-  total_p: number;
-  rendimiento_p: string;
+  precio_unitario_p?: number;
+  total_p?: number;
+  rendimiento_p?: string;
 };
 
 export default function EditorPartidas() {
