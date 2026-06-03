@@ -1,0 +1,43 @@
+# Base de datos local y backups
+*.sql
+*.json
+*.csv
+*.xlsx
+~$*.xlsx
+*.xls
+*.zip
+backup/
+DATA_LAST/
+ANALISIS_Y_PROPUESTAS/
+"Nueva carpeta/"
+
+# Dependencias root
+node_modules/
+package-lock.json
+package.json
+skills-lock.json
+
+# Scripts temporales de validación
+check_*.py
+evaluar_*.py
+analizar_*.py
+delete_*.py
+unlink_*.py
+update_*.py
+scratch/
+insert*.js
+debug*.js
+data-analyzer.js
+
+# Variables de entorno (credenciales)
+.env
+.env.*
+.env.local
+.env.production
+
+# Agentes
+.claude/
+.agents/
+
+# Supabase CLI local
+supabase/.temp/
