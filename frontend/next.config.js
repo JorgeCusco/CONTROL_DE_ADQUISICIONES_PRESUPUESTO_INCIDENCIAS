@@ -1,5 +1,8 @@
+const path = require('path');
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  outputFileTracingRoot: path.join(__dirname),
   allowedDevOrigins: [
     '192.168.3.25',
     'http://192.168.3.25:3000',

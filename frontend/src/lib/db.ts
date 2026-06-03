@@ -1,11 +1,12 @@
 import { Pool } from 'pg';
 
+const connectionString =
+  process.env.DATABASE_URL ??
+  `postgresql://${process.env.DB_USER}:${process.env.DB_PASSWORD}@${process.env.DB_HOST}:${process.env.DB_PORT ?? '5432'}/${process.env.DB_NAME}`;
+
 const pool = new Pool({
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  host: process.env.DB_HOST,
-  port: parseInt(process.env.DB_PORT || '5432', 10),
-  database: process.env.DB_NAME,
+  connectionString,
+  ssl: { rejectUnauthorized: false },
 });
 
 export default pool;
