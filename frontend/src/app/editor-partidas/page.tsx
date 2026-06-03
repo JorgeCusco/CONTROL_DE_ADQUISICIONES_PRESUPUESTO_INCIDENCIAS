@@ -32,7 +32,7 @@ export default function EditorPartidas() {
     }
   }, [isAuthenticated]);
 
-  const fetchPartidas = async (q = '') => {
+  const fetchPartidas = async (q = ''): Promise<void> => {
     setLoading(true);
     try {
       const res = await fetch(`/api/maestro/partidas?q=${q}&limit=100`);
@@ -292,7 +292,7 @@ export default function EditorPartidas() {
                   <button 
                     type="button" 
                     onClick={() => {
-                      setEditForm({...selectedPartida});
+                      if (selectedPartida) setEditForm({...selectedPartida});
                     }}
                     style={{ padding: '10px 20px', borderRadius: '6px', border: '1px solid #cbd5e1', background: 'white', color: '#475569', fontWeight: 600, cursor: 'pointer' }}
                   >
