@@ -15,6 +15,7 @@ export default function LayoutClient({
         </div>
         <nav className="sidebar-nav">
           <Link href="/">📊 Dashboard</Link>
+          <Link href="/editor-partidas">📝 Editor Partidas</Link>
           <Link href="/editor-maestro">🛠️ Editor Maestro</Link>
           <Link href="/control-insumos">⚙️ Control Insumos</Link>
           <Link href="/vinculador">🔗 Vinculador</Link>

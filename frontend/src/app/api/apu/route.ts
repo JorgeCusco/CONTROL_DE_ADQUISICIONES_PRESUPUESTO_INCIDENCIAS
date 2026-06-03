@@ -51,12 +51,23 @@ export async function POST(request: Request) {
       await client.query('BEGIN');
       
       for (const update of updates) {
-        await client.query(
-          `UPDATE acus 
-           SET cantidad_c = $1
-           WHERE id = $2`,
-          [update.cantidad_2, update.id]
-        );
+        if (update.precio_c !== undefined && update.precio_c !== null) {
+          await client.query(
+            `UPDATE acus 
+             SET cantidad_c = $1,
+                 precio_c = $3,
+                 parcial_c = ROUND(($1 * $3)::numeric, 2)
+             WHERE id = $2`,
+            [update.cantidad_2, update.id, update.precio_c]
+          );
+        } else {
+          await client.query(
+            `UPDATE acus 
+             SET cantidad_c = $1
+             WHERE id = $2`,
+            [update.cantidad_2, update.id]
+          );
+        }
       }
 
       if (globalNameUpdate && globalNameUpdate.oldName && globalNameUpdate.newName && globalNameUpdate.oldName !== globalNameUpdate.newName) {

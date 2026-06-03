@@ -65,13 +65,10 @@ export async function GET() {
              UPPER(COALESCE(a.tipo, 'OTROS')) as tipo,
              SUM(a.cantidad_p) as cant_orig,
              SUM(a.parcial_p) as parcial_orig,
+             MAX(a.precio_p) as precio_orig,
+             MAX(COALESCE(a.precio_c, a.precio_p)) as precio_mod,
              SUM(COALESCE(a.cantidad_c, a.cantidad_p)) as cant_mod,
-             SUM(COALESCE(
-               a.parcial_c,
-               CASE WHEN a.cantidad_c IS NOT NULL
-                    THEN a.cantidad_c * COALESCE(a.precio_c, a.precio_p)
-                    ELSE a.parcial_p END
-             )) as parcial_mod
+             SUM(ROUND((COALESCE(a.cantidad_c, a.cantidad_p) * COALESCE(a.precio_c, a.precio_p))::numeric, 2)) as parcial_mod
       FROM acus a
       LEFT JOIN partidas_p p ON a.item_partida = p.item
       GROUP BY p.item, p.descripcion, p.cantidad_p, p.rendimiento_p, a.codigo_insumo, a.descripcion_insumo, a.tipo
@@ -414,11 +411,11 @@ export async function GET() {
       const renderInsumoRow = (ins: any) => {
         const cantOrig = Number(ins.cant_orig) || 0;
         const parcialOrig = Number(ins.parcial_orig) || 0;
-        let precioOrig = cantOrig > 0 ? parcialOrig / cantOrig : 0;
+        let precioOrig = Number(ins.precio_orig) || 0;
         
         const cantMod = Number(ins.cant_mod) || 0;
         const parcialMod = Number(ins.parcial_mod) || 0;
-        let precioMod = cantMod > 0 ? parcialMod / cantMod : 0;
+        let precioMod = Number(ins.precio_mod) || 0;
 
         if (ins.unidad && ins.unidad.includes('%')) {
            precioOrig = cantOrig > 0 ? (parcialOrig * 100) / cantOrig : 0;

@@ -6,6 +6,7 @@ type InsumoAPU = {
   unidad: string;
   incidencia_original: number;
   parcial_original: number;
+  precio_original: number;
   cantidad_2: number;
 };
 
@@ -80,11 +81,16 @@ export default function ApuComparative({
             {insumos.map((ins, index) => {
               const cant = Number(ins.incidencia_original) || 0;
               const inci_x_m = cant * metradoFijo;
-              const parcial = Number(ins.parcial_original) || 0;
-              let precio = cant > 0 ? (parcial / cant) : 0;
+              let precio = Number(ins.precio_original) || 0;
+              
+              let parcial = cant * precio;
               if (ins.unidad.includes('%')) {
-                precio = cant > 0 ? (parcial * 100) / cant : 0;
+                const parcialOriginal = Number(ins.parcial_original) || 0;
+                precio = cant > 0 ? (parcialOriginal * 100) / cant : 0;
+                parcial = parcialOriginal;
               }
+              
+              parcial = parseFloat(parcial.toFixed(2));
               totalAntiguo += parcial;
 
               const isSelected = ins.descripcion === selectedInsumoName;
@@ -155,7 +161,7 @@ export default function ApuComparative({
             {insumos.map((ins, index) => {
               const cantOrig = Number(ins.incidencia_original) || 0;
               const parcialOrig = Number(ins.parcial_original) || 0;
-              let precioOrig = cantOrig > 0 ? (parcialOrig / cantOrig) : 0;
+              let precioOrig = Number(ins.precio_original) || 0;
               if (ins.unidad.includes('%')) {
                 precioOrig = cantOrig > 0 ? (parcialOrig * 100) / cantOrig : 0;
               }
@@ -165,10 +171,13 @@ export default function ApuComparative({
               const cantNueva = isSelected ? modifiedIncidencia : cantOrig;
               const inci_x_m = cantNueva * metradoFijo;
               const precioNuevo = isSelected ? ppp : precioOrig;
+              
               let parcialNuevo = cantNueva * precioNuevo;
               if (ins.unidad.includes('%')) {
                 parcialNuevo = parcialNuevo / 100;
               }
+              
+              parcialNuevo = parseFloat(parcialNuevo.toFixed(2));
 
               totalNuevo += parcialNuevo;
 

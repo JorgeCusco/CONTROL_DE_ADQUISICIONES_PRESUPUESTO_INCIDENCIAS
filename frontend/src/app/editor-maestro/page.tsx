@@ -16,6 +16,7 @@ type Insumo = {
   descripcion: string;
   unidad: string;
   costo_p: number;
+  ppp_calculado?: number;
 };
 
 type APU = {
@@ -42,7 +43,7 @@ const InsumoSelect = ({ apu, insumos, onChange }: { apu: APU, insumos: Insumo[],
         {display}
       </div>
       {open && (
-        <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'white', border: '1px solid #cbd5e1', zIndex: 50, maxHeight: '250px', display: 'flex', flexDirection: 'column', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', borderRadius: '4px', marginTop: '2px' }}>
+        <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'white', border: '1px solid #cbd5e1', zIndex: 50, maxHeight: '400px', display: 'flex', flexDirection: 'column', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', borderRadius: '4px', marginTop: '2px' }}>
           <input 
             autoFocus
             type="text" 
@@ -56,11 +57,22 @@ const InsumoSelect = ({ apu, insumos, onChange }: { apu: APU, insumos: Insumo[],
               <div 
                 key={ins.codigo} 
                 onClick={() => { onChange(ins.codigo); setOpen(false); setSearch(''); }}
-                style={{ padding: '8px', cursor: 'pointer', borderBottom: '1px solid #f1f5f9', fontSize: '0.8rem' }}
+                style={{ padding: '8px', cursor: 'pointer', borderBottom: '1px solid #f1f5f9', fontSize: '0.8rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
                 onMouseEnter={(e) => (e.currentTarget.style.background = '#f1f5f9')}
                 onMouseLeave={(e) => (e.currentTarget.style.background = 'white')}
               >
-                <strong>{ins.codigo}</strong> - {ins.descripcion}
+                <div style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', paddingRight: '10px' }}>
+                  <strong>{ins.codigo}</strong> - {ins.descripcion}
+                </div>
+                <div style={{ textAlign: 'right', minWidth: '90px' }}>
+                  {ins.ppp_calculado ? (
+                     <span style={{ background: '#fef08a', color: '#854d0e', padding: '2px 6px', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 'bold' }} title="Precio Promedio Ponderado de Compras">
+                       PPP S/ {Number(ins.ppp_calculado).toFixed(2)}
+                     </span>
+                  ) : (
+                     <span style={{ color: '#64748b' }}>S/ {Number(ins.costo_p).toFixed(2)}</span>
+                  )}
+                </div>
               </div>
             ))}
             {insumos.filter(ins => ins.codigo.toLowerCase().includes(search.toLowerCase()) || ins.descripcion.toLowerCase().includes(search.toLowerCase())).length === 0 && (
@@ -162,7 +174,7 @@ export default function EditorMaestro() {
       if (found) {
         newAcus[index].descripcion_insumo = found.descripcion;
         newAcus[index].unidad = found.unidad;
-        newAcus[index].precio_p = found.costo_p;
+        newAcus[index].precio_p = found.ppp_calculado ? Number(found.ppp_calculado) : found.costo_p;
       }
     }
 

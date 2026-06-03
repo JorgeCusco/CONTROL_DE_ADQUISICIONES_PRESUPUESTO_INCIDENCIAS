@@ -24,6 +24,7 @@ export async function GET(request: Request) {
     const query = `
       SELECT MIN(id) as id, descripcion_insumo as descripcion, MAX(unidad) as unidad,
              SUM(cantidad_p) as incidencia_original, SUM(parcial_p) as parcial_original,
+             MAX(precio_p) as precio_original,
              SUM(COALESCE(cantidad_c, cantidad_p)) as cantidad_2
       FROM acus
       WHERE item_partida = $1

@@ -227,7 +227,8 @@ export default function Home() {
         id: apu.id,
         cantidad_2: Number(apu.cantidad_2),
         cantidad_adquirida: globalAdquirido,
-        cantidad_modificada: Number(apu.cantidad_2) * Number(apu.metrado_fijo)
+        cantidad_modificada: Number(apu.cantidad_2) * Number(apu.metrado_fijo),
+        precio_c: apu.codigo_insumo === selectedInsumo ? totals.precioPromedio : apu.precio_unit_original
       };
 
       const res = await fetch('/api/apu', {
@@ -255,7 +256,8 @@ export default function Home() {
         id: a.id,
         cantidad_2: Number(a.cantidad_2),
         cantidad_adquirida: globalAdquirido,
-        cantidad_modificada: Number(a.cantidad_2) * Number(a.metrado_fijo)
+        cantidad_modificada: Number(a.cantidad_2) * Number(a.metrado_fijo),
+        precio_c: a.codigo_insumo === selectedInsumo ? totals.precioPromedio : a.precio_unit_original
       }));
 
       const res = await fetch('/api/apu', {
@@ -369,6 +371,14 @@ export default function Home() {
     window.location.href = '/api/exportar-formatos';
   };
 
+  const exportarFormatosRenso = () => {
+    window.location.href = '/api/exportar-formatos-renso';
+  };
+
+  const exportarCatalogoPPP = () => {
+    window.location.href = '/api/exportar-catalogo-ppp';
+  };
+
   return (
     <main className="container">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', gap: '1rem', flexWrap: 'wrap' }}>
@@ -379,6 +389,12 @@ export default function Home() {
           </button>
           <button onClick={exportarFormatos} style={{ background: '#f59e0b', color: 'white', padding: '0.5rem 1rem', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', marginLeft: '0.5rem' }}>
             📝 Exportar Formatos
+          </button>
+          <button onClick={exportarFormatosRenso} style={{ background: '#0284c7', color: 'white', padding: '0.5rem 1rem', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', marginLeft: '0.5rem' }}>
+            📡 Exportar Formatos Renso
+          </button>
+          <button onClick={exportarCatalogoPPP} style={{ background: '#8b5cf6', color: 'white', padding: '0.5rem 1rem', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', marginLeft: '0.5rem' }}>
+            🏷️ Exportar Catálogo PPP
           </button>
           <button 
             onClick={exportToExcel} 
